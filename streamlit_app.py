@@ -13,7 +13,7 @@ import shutil
 import pdfplumber
 import ollama
 
-from langchain_community.document_loaders import UnstructuredPDFLoader
+#from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
@@ -24,13 +24,10 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from typing import List, Tuple, Dict, Any, Optional
 
-# Streamlit page configuration
-st.set_page_config(
-    page_title="Ollama PDF RAG Streamlit UI",
-    page_icon="🎈",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+from langchain_community.document_loaders import UnstructuredExcelLoader
+from langchain_community.document_loaders.csv_loader import CSVLoader
+import csv
+csv.field_size_limit(10**6)
 
 # Logging configuration
 logging.basicConfig(
@@ -41,6 +38,31 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+import sys
+# total arguments
+n = len(sys.argv)
+#logger.info(f"Extracted model names: {model_names}")
+logger.info("Total arguments passed: %s", n)
+
+for i in range(1, n):
+    embed_model_args = sys.argv[1]
+    chunk_size_args = sys.argv[2]
+    chunk_overlap_args = sys.argv[3]
+    #llm_model_args = sys.argv[2]
+    
+#print("llm_model from Args:", llm_model_args)
+logger.info("embed_model from Args: %s", embed_model_args)
+logger.info("chunk_size from Args: %s", chunk_size_args)
+logger.info("chunk_overlap from Args: %s", chunk_overlap_args)
+
+
+# Streamlit page configuration
+st.set_page_config(
+    page_title="Ollama CSV RAG Streamlit UI",
+    page_icon="🎈",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 @st.cache_resource(show_spinner=True)
 def extract_model_names(
@@ -63,10 +85,10 @@ def extract_model_names(
 
 def create_vector_db(file_upload) -> Chroma:
     """
-    Create a vector database from an uploaded PDF file.
+    Create a vector database from an uploaded CSV file.
 
     Args:
-        file_upload (st.UploadedFile): Streamlit file upload object containing the PDF.
+        file_upload (st.UploadedFile): Streamlit file upload object containing the CSV.
 
     Returns:
         Chroma: A vector store containing the processed document chunks.
@@ -78,17 +100,18 @@ def create_vector_db(file_upload) -> Chroma:
     with open(path, "wb") as f:
         f.write(file_upload.getvalue())
         logger.info(f"File saved to temporary path: {path}")
-        loader = UnstructuredPDFLoader(path)
+        #loader = UnstructuredPDFLoader(path)
+        loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={'delimiter': ','})
         data = loader.load()
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=7500, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(chunk_size_args), chunk_overlap=int(chunk_overlap_args))
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
-    embeddings = OllamaEmbeddings(model="nomic-embed-text", show_progress=True)
+    embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text
+    persist_directory_xlsx ='./chroma_db_xlsx'
     vector_db = Chroma.from_documents(
-        documents=chunks, embedding=embeddings, collection_name="myRAG"
-    )
+        documents=chunks, embedding=embeddings, persist_directory=persist_directory_xlsx, collection_name="myRAG-CSV")
     logger.info("Vector DB created")
 
     shutil.rmtree(temp_dir)
@@ -108,8 +131,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     Returns:
         str: The generated response to the user's question.
     """
-    logger.info(f"""Processing question: {
-                question} using model: {selected_model}""")
+    logger.info(f"""Processing question: {question} using model: {selected_model}""")
     llm = ChatOllama(model=selected_model, temperature=0)
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
@@ -150,19 +172,38 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
 @st.cache_data
 def extract_all_pages_as_images(file_upload) -> List[Any]:
     """
-    Extract all pages from a PDF file as images.
+    Extract all pages from a CSV file as images.
 
     Args:
-        file_upload (st.UploadedFile): Streamlit file upload object containing the PDF.
+        file_upload (st.UploadedFile): Streamlit file upload object containing the CSV.
 
     Returns:
         List[Any]: A list of image objects representing each page of the PDF.
     """
-    logger.info(f"""Extracting all pages as images from file: {
-                file_upload.name}""")
+    logger.info(f"""Extracting all pages as images from file: {file_upload.name}""")
+
+    import pdfkit
+    import pandas as pd
+
+    df = pd.read_csv(file_upload)
+    html_table = df.to_html()
+
+    options = {    'page-size': 'Letter',
+    'margin-top': '0mm',
+    'margin-right': '0mm',
+    'margin-bottom': '0mm',
+    'margin-left': '0mm'
+    }
+
+    pdf_name = "image.pdf"
+    #pdfkit.configuration(wkhtmltopdf='D:/htmltopdf/wkhtmltopdf/bin')
+    pdfkit.from_string(html_table, pdf_name, options=options)
+
     pdf_pages = []
-    with pdfplumber.open(file_upload) as pdf:
+    
+    with pdfplumber.open(pdf_name) as pdf:
         pdf_pages = [page.to_image().original for page in pdf.pages]
+    
     logger.info("PDF pages extracted as images")
     return pdf_pages
 
@@ -214,13 +255,15 @@ def main() -> None:
         )
 
     file_upload = col1.file_uploader(
-        "Upload a PDF file ↓", type="pdf", accept_multiple_files=False
+        "Upload a CSV file ↓", type="csv", accept_multiple_files=False
     )
 
     if file_upload:
         st.session_state["file_upload"] = file_upload
         if st.session_state["vector_db"] is None:
             st.session_state["vector_db"] = create_vector_db(file_upload)
+        
+        #first covert to pdf and then pass to this call
         pdf_pages = extract_all_pages_as_images(file_upload)
         st.session_state["pdf_pages"] = pdf_pages
 
@@ -259,7 +302,7 @@ def main() -> None:
                             )
                             st.markdown(response)
                         else:
-                            st.warning("Please upload a PDF file first.")
+                            st.warning("Please upload a csv file first.")
 
                 if st.session_state["vector_db"] is not None:
                     st.session_state["messages"].append(
@@ -271,7 +314,7 @@ def main() -> None:
                 logger.error(f"Error processing prompt: {e}")
         else:
             if st.session_state["vector_db"] is None:
-                st.warning("Upload a PDF file to begin chat...")
+                st.warning("Upload a csv file to begin chat...")
 
 
 if __name__ == "__main__":
