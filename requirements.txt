@@ -8,9 +8,5 @@ langchain-community
 langchain_text_splitters
 unstructured
 unstructured[all-docs]
-openpyxl
-Spire.Xls
 Pillow
 pdfkit
-wkhtmltopdf
-csv2pdf
