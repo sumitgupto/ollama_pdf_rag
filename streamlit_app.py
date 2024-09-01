@@ -109,7 +109,7 @@ def create_vector_db(file_upload) -> Chroma:
     logger.info("Document split into chunks")
 
     embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text
-    persist_directory_xlsx ='./chroma_db_xlsx'
+    persist_directory_xlsx ='./chroma_db_csv'
     vector_db = Chroma.from_documents(
         documents=chunks, embedding=embeddings, persist_directory=persist_directory_xlsx, collection_name="myRAG-CSV")
     logger.info("Vector DB created")
