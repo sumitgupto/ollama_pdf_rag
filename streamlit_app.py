@@ -108,10 +108,10 @@ def create_vector_db(file_upload) -> Chroma:
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
-    embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text
-    persist_directory_xlsx ='./chroma_db_csv'
+    embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
+    persist_directory_csv ='./chroma_db_csv'
     vector_db = Chroma.from_documents(
-        documents=chunks, embedding=embeddings, persist_directory=persist_directory_xlsx, collection_name="myRAG-CSV")
+        documents=chunks, embedding=embeddings, persist_directory=persist_directory_csv, collection_name="myRAG-CSV")
     logger.info("Vector DB created")
 
     shutil.rmtree(temp_dir)
@@ -135,8 +135,11 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     llm = ChatOllama(model=selected_model, temperature=0)
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
-        template="""You are an AI language model assistant. Your task is to generate 3
-        different versions of the given user question to retrieve relevant documents from
+        template="""You are an AI language model assistant and you understand git commit data.
+        You shall review documents containing git commits. The first column is "commit id", 2nd column is "Changes" 
+        and 3rd column is "Comments".
+        you should be able to count git commits and find similarities and dissimilarities between 2 git commits
+        Your task is to generate 3 different versions of the given user question to retrieve relevant documents from
         a vector database. By generating multiple perspectives on the user question, your
         goal is to help the user overcome some of the limitations of the distance-based
         similarity search. Provide these alternative questions separated by newlines.
