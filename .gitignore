@@ -162,3 +162,6 @@ chroma_db_xlsx/72426773-2d27-4b24-8e6d-23f2a8a94353/data_level0.bin
 chroma_db*
 .gitignore
 .env
+cache/cache_db_0.11.db.wal
+cache/cache_db_0.11.db
+image.pdf
