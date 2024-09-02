@@ -10,3 +10,4 @@ unstructured
 unstructured[all-docs]
 Pillow
 pdfkit
+langchain-openai

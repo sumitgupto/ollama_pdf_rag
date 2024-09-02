@@ -48,39 +48,32 @@ for i in range(1, n):
     embed_model_args = sys.argv[1]
     chunk_size_args = sys.argv[2]
     chunk_overlap_args = sys.argv[3]
-    #llm_model_args = sys.argv[2]
+    llm_model_args = sys.argv[4] #gpt-4o-mini
     
 #print("llm_model from Args:", llm_model_args)
 logger.info("embed_model from Args: %s", embed_model_args)
 logger.info("chunk_size from Args: %s", chunk_size_args)
 logger.info("chunk_overlap from Args: %s", chunk_overlap_args)
+logger.info("llm_model from Args: %s", llm_model_args)
+
+#read dotenv
+from dotenv import load_dotenv, find_dotenv
+founddotenv = load_dotenv(find_dotenv(), override=True) 
+logger.info("Found .env: %s", founddotenv)
 
 
 # Streamlit page configuration
 st.set_page_config(
-    page_title="Ollama CSV RAG Streamlit UI",
+    page_title="Ollama CSV RAG using openAI",
     page_icon="🎈",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 @st.cache_resource(show_spinner=True)
-def extract_model_names(
-    models_info: Dict[str, List[Dict[str, Any]]],
-) -> Tuple[str, ...]:
-    """
-    Extract model names from the provided models information.
-
-    Args:
-        models_info (Dict[str, List[Dict[str, Any]]]): Dictionary containing information about available models.
-
-    Returns:
-        Tuple[str, ...]: A tuple of model names.
-    """
-    logger.info("Extracting model names from models_info")
-    model_names = tuple(model["name"] for model in models_info["models"])
-    logger.info(f"Extracted model names: {model_names}")
-    return model_names
+#hardcode model names
+def extract_model_names():
+    return llm_model_args
 
 
 def create_vector_db(file_upload) -> Chroma:
@@ -108,10 +101,16 @@ def create_vector_db(file_upload) -> Chroma:
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
-    embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
+    #embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
+    from langchain_openai import OpenAIEmbeddings
+    embeddings = OpenAIEmbeddings(model='text-embedding-3-small', dimensions=1536) 
     persist_directory_csv ='./chroma_db_csv'
     vector_db = Chroma.from_documents(
-        documents=chunks, embedding=embeddings, persist_directory=persist_directory_csv, collection_name="myRAG-CSV")
+        documents=chunks, 
+        embedding=embeddings, 
+        persist_directory=persist_directory_csv, 
+        collection_name="myRAG-CSV"
+        )
     logger.info("Vector DB created")
 
     shutil.rmtree(temp_dir)
