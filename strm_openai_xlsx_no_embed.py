@@ -71,7 +71,6 @@ def create_vector_db(file_upload) -> SmartDataframe:
         f.write(file_upload.getvalue())
         logger.info(f"File saved to temporary path: {path}")
 
-
     llm = ChatOpenAI(model=llm_model_args, temperature=0)
 
     df=pd.read_excel(file_upload)
@@ -80,8 +79,7 @@ def create_vector_db(file_upload) -> SmartDataframe:
         df,
         config= { 
             "llm":llm, 
-            "response_parser":StreamlitResponse,
-            }
+            "response_parser":StreamlitResponse}
     )
 
     shutil.rmtree(temp_dir)
@@ -94,7 +92,7 @@ def process_question(question: str, sdf: SmartDataframe, selected_model: str) ->
 
     logger.info(f"""Processing question: {question} using model: {selected_model}""")
     #llm = ChatOllama(model=selected_model, temperature=0)
-    llm = ChatOpenAI(model=selected_model, temperature=0)
+    #llm = ChatOpenAI(model=selected_model, temperature=0)
 
     response=sdf.chat(input)
     logger.info("Question processed and response generated")
@@ -179,6 +177,7 @@ def main() -> None:
         st.session_state["file_upload"] = file_upload
         if st.session_state["vector_db"] is None:
             st.session_state["vector_db"] = create_vector_db(file_upload)
+            logger.info("st.session_state['vector_db'] updated in session")
 
         pdf_pages = extract_all_pages_as_images(file_upload)
         st.session_state["pdf_pages"] = pdf_pages

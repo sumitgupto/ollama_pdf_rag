@@ -21,10 +21,9 @@ st.title("CHAT WITH YOUR EXCEL FILE")
 file=st.file_uploader("upload your file",type=["xlsx"])
 if file:
     df=pd.read_excel(file)
-    sdf=SmartDataframe(df,
-                       config={"llm":llm,"response_parser":StreamlitResponse,"save_charts":True,
-                               "save_charts_path":pwd
-                               }
+    sdf=SmartDataframe ( 
+        df,
+        config={"llm":llm,"response_parser":StreamlitResponse}
     )
 
     input=st.text_area("ask your question here")
