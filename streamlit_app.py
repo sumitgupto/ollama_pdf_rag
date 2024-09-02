@@ -1,7 +1,7 @@
 """
-Streamlit application for PDF-based Retrieval-Augmented Generation (RAG) using Ollama + LangChain.
+Streamlit application for CSV-based Retrieval-Augmented Generation (RAG) using Ollama + LangChain.
 
-This application allows users to upload a PDF, process it,
+This application allows users to upload a CSV, process it,
 and then ask questions about the content using a selected language model.
 """
 
