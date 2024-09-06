@@ -9,13 +9,14 @@ import pdfplumber
 
 from langchain_community.vectorstores import Chroma
 #from langchain_community.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
-from langchain_core.runnables import RunnablePassthrough
-from langchain.retrievers.multi_query import MultiQueryRetriever
+
+from langchain.output_parsers import PandasDataFrameOutputParser
+from langchain_core.prompts import PromptTemplate
+
 from typing import List, Tuple, Dict, Any, Optional
 
 import pandas as pd
-from pandasai import SmartDataframe
+from pandas import DataFrame
 from langchain_openai import ChatOpenAI
 from pandasai.responses.streamlit_response import StreamlitResponse
 
@@ -61,7 +62,7 @@ def extract_model_names():
     return llm_model_args
 
 
-def create_vector_db(file_upload) -> SmartDataframe:
+def create_vector_db(file_upload) -> DataFrame:
 
     logger.info(f"Creating vector DB from file upload: {file_upload.name}")
 
@@ -71,30 +72,34 @@ def create_vector_db(file_upload) -> SmartDataframe:
         f.write(file_upload.getvalue())
         logger.info(f"File saved to temporary path: {path}")
 
-    llm = ChatOpenAI(model=llm_model_args, temperature=0)
+    #llm = ChatOpenAI(model=llm_model_args, temperature=0)
 
     df=pd.read_excel(file_upload)
-
-    sdf=SmartDataframe (
-        df,
-        config= { 
-            "llm":llm, 
-            "response_parser":StreamlitResponse}
-    )
 
     shutil.rmtree(temp_dir)
     logger.info(f"Temporary directory {temp_dir} removed")
 
-    return sdf
+    return df
 
 
-def process_question(question: str, sdf: SmartDataframe, selected_model: str) -> str:
+def process_question(question: str, sdf: DataFrame, selected_model: str) -> str:
 
     logger.info(f"""Processing question: {question} using model: {selected_model}""")
-    #llm = ChatOllama(model=selected_model, temperature=0)
-    #llm = ChatOpenAI(model=selected_model, temperature=0)
 
-    response=sdf.chat(input)
+    parser = PandasDataFrameOutputParser(DataFrame=sdf)
+
+    # Set up the prompt.
+    prompt = PromptTemplate(
+        template="Answer the user query.\n{format_instructions}\n{query}\n",
+        input_variables=["query"],
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+    )
+
+    model = ChatOpenAI(model=selected_model, temperature=0)
+
+    chain = prompt | model | parser
+    response = chain.invoke({"query": question})
+
     logger.info("Question processed and response generated")
     return response
 
@@ -212,7 +217,7 @@ def main() -> None:
                 with message_container.chat_message("assistant", avatar="🤖"):
                     with st.spinner(":green[processing...]"):
                         if st.session_state["vector_db"] is not None:
-                            response = process_question(
+                            response = process_question (
                                 prompt, st.session_state["vector_db"], selected_model
                             )
                             st.markdown(response)

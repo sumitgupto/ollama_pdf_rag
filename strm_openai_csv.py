@@ -25,6 +25,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain.retrievers.multi_query import MultiQueryRetriever
+
 from typing import List, Tuple, Dict, Any, Optional
 
 #from langchain_community.document_loaders import UnstructuredExcelLoader
@@ -48,7 +49,7 @@ n = len(sys.argv)
 logger.info("Total arguments passed: %s", n)
 
 for i in range(1, n):
-    embed_model_args = sys.argv[1]
+    embed_model_args = sys.argv[1] #text-embedding-3-large
     chunk_size_args = sys.argv[2]
     chunk_overlap_args = sys.argv[3]
     llm_model_args = sys.argv[4] #gpt-4o-mini
@@ -67,7 +68,7 @@ logger.info("Found .env: %s", founddotenv)
 
 # Streamlit page configuration
 st.set_page_config(
-    page_title="Ollama CSV RAG using openAI",
+    page_title="OPENAI CSV RAG using openAI",
     page_icon="🎈",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -99,14 +100,18 @@ def create_vector_db(file_upload) -> Chroma:
         #loader = UnstructuredPDFLoader(path)
         loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={'delimiter': ','})
         data = loader.load()
+        print("Total documents : ", len(data))
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(chunk_size_args), chunk_overlap=int(chunk_overlap_args))
     chunks = text_splitter.split_documents(data)
+    #print_chunks(chunks)
+    print("Total Chunks : ", len(chunks))
     logger.info("Document split into chunks")
 
     #embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
     from langchain_openai import OpenAIEmbeddings
     embeddings = OpenAIEmbeddings(model= embed_model_args, dimensions=1536) #text-embedding-3-small
+    
     persist_directory_csv ='./chroma_db_csv'
     vector_db = Chroma.from_documents(
         documents=chunks, 
@@ -119,6 +124,14 @@ def create_vector_db(file_upload) -> Chroma:
     shutil.rmtree(temp_dir)
     logger.info(f"Temporary directory {temp_dir} removed")
     return vector_db
+
+def print_chunks(chunks) :
+    for i in range(10) :
+        print(f"\nChunk value in iteration {i} is : ", chunks[i])
+    
+    last_chunk = chunks[-10:]
+    for j in range(len(last_chunk)) :
+         print(f"\nChunk value in iteration {j} is : ", chunks[j])
 
 
 def process_question(question: str, vector_db: Chroma, selected_model: str) -> str:
@@ -138,10 +151,12 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     llm = ChatOpenAI(model=selected_model, temperature=0)
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
-        template="""You are an AI language model assistant and you understand git commit data.
-        You shall review documents containing git commits. The first column is "commit id", 2nd column is "Changes" 
-        and 3rd column is "Comments".
-        you should be able to count git commits and find similarities and dissimilarities between 2 git commits
+        template="""You are an AI language model assistant and you understand csv data.
+        The file has 3 columns
+        The first row is the header row
+        first column is "Commit ID", second column is "Changes" and third column is "Comments".
+        You should correlate each "Commit ID" with "Changes" and "Comments"
+
         Your task is to generate 3 different versions of the given user question to retrieve relevant documents from
         a vector database. By generating multiple perspectives on the user question, your
         goal is to help the user overcome some of the limitations of the distance-based
@@ -149,9 +164,14 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         Original question: {question}""",
     )
 
+    import logging
+    logging.basicConfig()
+    logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
+
     retriever = MultiQueryRetriever.from_llm(
         vector_db.as_retriever(), llm, prompt=QUERY_PROMPT
     )
+
 
     template = """Answer the question based ONLY on the following context:
     {context}
@@ -279,7 +299,7 @@ def main() -> None:
         )
 
         with col1:
-            with st.container(height=410, border=True):
+            with st.container(height=210, border=True):
                 for page_image in pdf_pages:
                     st.image(page_image, width=zoom_level)
 
@@ -289,7 +309,7 @@ def main() -> None:
         delete_vector_db(st.session_state["vector_db"])
 
     with col2:
-        message_container = st.container(height=500, border=True)
+        message_container = st.container(height=300, border=True)
 
         for message in st.session_state["messages"]:
             avatar = "🤖" if message["role"] == "assistant" else "😎"

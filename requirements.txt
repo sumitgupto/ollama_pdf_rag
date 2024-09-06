@@ -12,3 +12,4 @@ Pillow
 pdfkit
 langchain-openai
 openpyxl
+langchain-experimental

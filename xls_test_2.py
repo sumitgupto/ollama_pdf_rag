@@ -15,7 +15,7 @@ for i in range(1, n):
     llm_model_args = sys.argv[1] #gpt-4o-mini
     
 print("llm_model from Args: ", llm_model_args)
-llm=ChatOpenAI(model = llm_model_args) #gpt-4o-mini
+llm=ChatOpenAI(model = llm_model_args) #c
 
 st.title("CHAT WITH YOUR EXCEL FILE")
 file=st.file_uploader("upload your file",type=["xlsx"])

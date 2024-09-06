@@ -1,9 +1,4 @@
 """
-Streamlit application for CSV-based Retrieval-Augmented Generation (RAG) using Ollama + LangChain.
-
-This application allows users to upload a xlsx, process it,
-and then ask questions about the content using a selected language model.
-
 streamlit run strm_openai.py text-embedding-3-small 1000 100 gpt-4o-mini
 """
 
@@ -13,13 +8,15 @@ import os
 import tempfile
 import shutil
 import pdfplumber
-#import ollama
+import pandas as pd
+import numpy as np
+import ollama
 
 #from langchain_community.document_loaders import UnstructuredPDFLoader
 #from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
+from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 #from langchain_community.chat_models import ChatOllama
 from langchain_openai import ChatOpenAI
@@ -27,11 +24,18 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from typing import List, Tuple, Dict, Any, Optional
 
-from langchain_community.document_loaders import UnstructuredExcelLoader
-from langchain_community.vectorstores.utils import filter_complex_metadata
-#from langchain_community.document_loaders.csv_loader import CSVLoader
-#import csv
-#csv.field_size_limit(10**6)
+from langchain.chains import LLMChain
+
+from langchain.agents.agent_types import AgentType
+from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+from pandas import DataFrame
+
+from langchain.callbacks import get_openai_callback
+
+#from langchain_community.document_loaders import UnstructuredExcelLoader
+from langchain_community.document_loaders.csv_loader import CSVLoader
+import csv
+csv.field_size_limit(10**6)
 
 # Logging configuration
 logging.basicConfig(
@@ -49,7 +53,7 @@ n = len(sys.argv)
 logger.info("Total arguments passed: %s", n)
 
 for i in range(1, n):
-    embed_model_args = sys.argv[1]
+    embed_model_args = sys.argv[1] #text-embedding-3-large
     chunk_size_args = sys.argv[2]
     chunk_overlap_args = sys.argv[3]
     llm_model_args = sys.argv[4] #gpt-4o-mini
@@ -68,7 +72,7 @@ logger.info("Found .env: %s", founddotenv)
 
 # Streamlit page configuration
 st.set_page_config(
-    page_title="Ollama XLSX RAG using openAI",
+    page_title="OPENAI CSV RAG using openAI",
     page_icon="🎈",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -81,15 +85,7 @@ def extract_model_names():
 
 
 def create_vector_db(file_upload) -> Chroma:
-    """
-    Create a vector database from an uploaded xlsx file.
 
-    Args:
-        file_upload (st.UploadedFile): Streamlit file upload object containing the xlsx.
-
-    Returns:
-        Chroma: A vector store containing the processed document chunks.
-    """
     logger.info(f"Creating vector DB from file upload: {file_upload.name}")
     temp_dir = tempfile.mkdtemp()
 
@@ -98,96 +94,86 @@ def create_vector_db(file_upload) -> Chroma:
         f.write(file_upload.getvalue())
         logger.info(f"File saved to temporary path: {path}")
         #loader = UnstructuredPDFLoader(path)
-        #loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={'delimiter': ','})
-        loader = UnstructuredExcelLoader(file_path=path, mode="elements")
-        data = loader.load()
+        df = pd.read_csv(path)
+        df = df.replace(np.nan, "NA")
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(chunk_size_args), chunk_overlap=int(chunk_overlap_args))
-    chunks = text_splitter.split_documents(data)
-    logger.info(f"Document split into {len(chunks)} chunks")
-
-    #embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
-    try:
-        from langchain_openai import OpenAIEmbeddings
-        embeddings = OpenAIEmbeddings(model= embed_model_args, dimensions=1536) #text-embedding-3-small
-        logger.info("Embeddings initiated")
-
-        persist_directory_xlsx ='./chroma_db_xlsx'
-        vector_db = Chroma.from_documents(
-            #filter_complex_metadata(chunks_xlsx)
-            documents=filter_complex_metadata(chunks), 
-            embedding=embeddings, 
-            persist_directory=persist_directory_xlsx, 
-            collection_name="myRAG-xlsx"
-            )
-        logger.info("Vector DB created")
-    except Exception as e:
-        logger.error("FAILED to create Vector DB")
-        logger.error("The error is: ",e)
+    logger.info("DF created and loaded")
 
     shutil.rmtree(temp_dir)
     logger.info(f"Temporary directory {temp_dir} removed")
-    return vector_db
+    return df
 
 
-def process_question(question: str, vector_db: Chroma, selected_model: str) -> str:
-    """
-    Process a user question using the vector database and selected language model.
-
-    Args:
-        question (str): The user's question.
-        vector_db (Chroma): The vector database containing document embeddings.
-        selected_model (str): The name of the selected language model.
-
-    Returns:
-        str: The generated response to the user's question.
-    """
+def process_question(question: str, df: DataFrame, selected_model: str) -> str:
+    
     logger.info(f"""Processing question: {question} using model: {selected_model}""")
-    #llm = ChatOllama(model=selected_model, temperature=0)
-    llm = ChatOpenAI(model=selected_model, temperature=0)
-    QUERY_PROMPT = PromptTemplate(
-        input_variables=["question"],
-        template="""You are an AI language model assistant and you understand git commit data.
-        You shall review documents containing git commits. The first column is "commit id", 2nd column is "Changes" 
-        and 3rd column is "Comments".
-        you should be able to count git commits and find similarities and dissimilarities between 2 git commits
-        Your task is to generate 3 different versions of the given user question to retrieve relevant documents from
-        a vector database. By generating multiple perspectives on the user question, your
-        goal is to help the user overcome some of the limitations of the distance-based
-        similarity search. Provide these alternative questions separated by newlines.
-        Original question: {question}""",
-    )
 
-    retriever = MultiQueryRetriever.from_llm(
-        vector_db.as_retriever(), llm, prompt=QUERY_PROMPT
-    )
+    llm = ChatOpenAI (temperature = 0, model_name = selected_model)
 
-    template = """Answer the question based ONLY on the following context:
-    {context}
+    template = """
+    You are working with a pandas dataframe in Python. The name of the dataframe is `df`.
+    You should interpret the columns of the dataframe as follows:
+
+    1) Only answer questions related to the dataframe. For anything else, say you do not know.
+    2) Each row of the dataframe corresponds to a git commit.
+    3) The 1st column 'commit id' is the primary key or unique identifier for all rows
+    4) The 2nd column 'Changes' shows the changes for the corresponding 'commit id' in the 1st column
+    5) The 3rd column 'Comments' shows the code review comments for the corresponding 'commit id' in the 1st column and 'Changes' in the 2nd column
+    9) If you do not know the answer, just say I don' know.
+
+    You should use the tools below and the instructions above to answer the question posed of you:
+
+    python_repl_ast: A Python shell. Use this to execute python commands. Input should be a valid python command. 
+    When using this tool, sometimes output is abbreviated - make sure it does not look abbreviated before using it in your answer.
+
+    Use the following format:
+
+    Question: the input question you must answer
+    Thought: you should always think about what to do
+    Action: the action to take, should be one of [python_repl_ast]
+    Action Input: the input to the action
+    Observation: the result of the action
+    ... (this Thought/Action/Action Input/Observation can repeat N times)
+    Thought: I now know the final answer
+    Final Answer: the final answer to the original input question
+
+    Begin!
+
     Question: {question}
-    If you don't know the answer, just say that you don't know, don't try to make up an answer.
-    Only provide the answer from the {context}, nothing else.
-    Add snippets of the context you used to answer the question.
+    {agent_scratchpad}
     """
 
-    prompt = ChatPromptTemplate.from_template(template)
+    #prompt = PromptTemplate(template=template, input_variables=["question"])
 
-    chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
+    logger.info("Set the new template")
+
+    agent = create_pandas_dataframe_agent (
+        llm,
+        df,
+        agent_type=AgentType.OPENAI_FUNCTIONS,
+        verbose=True,
+        allow_dangerous_code=True,
+        #number_of_head_rows = 5
     )
 
-    response = chain.invoke(question)
-    logger.info("Question processed and response generated")
+    #agent.agent.llm_chain.prompt.template = template
+
+    response = count_tokens(agent, question)
+    #response = agent.invoke(question)
+
     return response
 
+def count_tokens(agent, question):
+    with get_openai_callback() as cb:
+        result = agent.invoke(question)
+        print(f'Spent a total of {cb.total_tokens} tokens')
+
+    return result
 
 @st.cache_data
 def extract_all_pages_as_images(file_upload) -> List[Any]:
     """
-    Extract all pages from a xlsx file as images.
+    Extract all pages from a CSV file as images.
 
     Args:
         file_upload (st.UploadedFile): Streamlit file upload object containing the CSV.
@@ -200,12 +186,9 @@ def extract_all_pages_as_images(file_upload) -> List[Any]:
     import pdfkit
     import pandas as pd
 
-    # read by default 1st sheet of an excel file
-    try: 
-        df = pd.read_excel(file_upload)
-        html_table = df.to_html()
-    except:
-        logger.error("Error Occurred while reading excel sheet")
+    df = pd.read_csv(file_upload)
+    df = df.replace(np.nan, "NA")
+    html_table = df.to_html()
 
     options = {    'page-size': 'Letter',
     'margin-top': '0mm',
@@ -255,7 +238,7 @@ def main() -> None:
     This function sets up the user interface, handles file uploads,
     processes user queries, and displays results.
     """
-    st.subheader("🧠 OPENAI XLSX RAG playground", divider="gray", anchor=False)
+    st.subheader("🧠 OPENAI CSV RAG playground", divider="gray", anchor=False)
 
     #models_info = ollama.list()
     #available_models = extract_model_names(models_info)
@@ -275,7 +258,7 @@ def main() -> None:
         )
 
     file_upload = col1.file_uploader(
-        "Upload a xlsx file ↓", type="xlsx", accept_multiple_files=False
+        "Upload a CSV file ↓", type="csv", accept_multiple_files=False
     )
 
     if file_upload:
@@ -292,7 +275,7 @@ def main() -> None:
         )
 
         with col1:
-            with st.container(height=410, border=True):
+            with st.container(height=210, border=True):
                 for page_image in pdf_pages:
                     st.image(page_image, width=zoom_level)
 
@@ -302,7 +285,7 @@ def main() -> None:
         delete_vector_db(st.session_state["vector_db"])
 
     with col2:
-        message_container = st.container(height=500, border=True)
+        message_container = st.container(height=300, border=True)
 
         for message in st.session_state["messages"]:
             avatar = "🤖" if message["role"] == "assistant" else "😎"
@@ -322,7 +305,7 @@ def main() -> None:
                             )
                             st.markdown(response)
                         else:
-                            st.warning("Please upload a xlsx file first.")
+                            st.warning("Please upload a csv file first.")
 
                 if st.session_state["vector_db"] is not None:
                     st.session_state["messages"].append(
@@ -334,7 +317,7 @@ def main() -> None:
                 logger.error(f"Error processing prompt: {e}")
         else:
             if st.session_state["vector_db"] is None:
-                st.warning("Upload a xlsx file to begin chat...")
+                st.warning("Upload a csv file to begin chat...")
 
 
 if __name__ == "__main__":

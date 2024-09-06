@@ -1,0 +1,1339 @@
+﻿Commit ID,Changes,Comments
+1463a176bf652172560c3893c84b61c86e1b47f5,"diff --git a/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java b/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java
+index dd0b50b37..84bb7cd76 100644
+--- a/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java
++++ b/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java
+@@ -33,5 +33,5 @@ public class FeatureFlagConstants
+ 
+     public static final String FF_24_4_FIX_EDIT_APPOINTMENT_DATE = ""SUP-522225#2024-08"";
+ 
+-    public static final String FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE = ""SUP-504432#2024-08"";
++    public static final String FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE = ""SUP-518897#2024-08"";
+ }",
+39c8f648fdb08e8717237ae4ffca5b181cd3fd33,"diff --git a/gradle.properties b/gradle.properties
+index 63e41475e..541cd2205 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -1 +1 @@
+-dbChecksum=5cf61ada06975e25d78b471e00b5184e
++dbChecksum=153d228ee28c89f7182274a47fc7cd8e
+diff --git a/src/component-test/java/com/manh/cp/appointment/parameterizedTests/CapacityParameterizedTests.java b/src/component-test/java/com/manh/cp/appointment/parameterizedTests/CapacityParameterizedTests.java
+index 816a8d5b4..0a4648a8d 100644
+--- a/src/component-test/java/com/manh/cp/appointment/parameterizedTests/CapacityParameterizedTests.java
++++ b/src/component-test/java/com/manh/cp/appointment/parameterizedTests/CapacityParameterizedTests.java
+@@ -55,6 +55,14 @@ public class CapacityParameterizedTests extends ParameterizedTestBase
+             { ""test 11"", ""appointment/appointment/parameterizedTests/capacityTests/test11/"" },
+             { ""test 12"", ""appointment/appointment/parameterizedTests/capacityTests/test12/"" },
+             { ""test 13"", ""appointment/appointment/parameterizedTests/capacityTests/test13/"" },
++            { ""test 14"", ""appointment/appointment/parameterizedTests/capacityTests/test14/"" },
++            { ""test 15"", ""appointment/appointment/parameterizedTests/capacityTests/test15/"" },
++            { ""test 16"", ""appointment/appointment/parameterizedTests/capacityTests/test16/"" },
++            { ""test 17"", ""appointment/appointment/parameterizedTests/capacityTests/test17/"" },
++            { ""test 18"", ""appointment/appointment/parameterizedTests/capacityTests/test18/"" },
++            { ""test 19"", ""appointment/appointment/parameterizedTests/capacityTests/test19/"" },
++            { ""test 20"", ""appointment/appointment/parameterizedTests/capacityTests/test20/"" },
++            { ""test 21"", ""appointment/appointment/parameterizedTests/capacityTests/test21/"" },
+     });
+ 
+     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+@@ -88,8 +96,6 @@ public class CapacityParameterizedTests extends ParameterizedTestBase
+         context = Context.renewContext(null, ""system"", ""1"", null, null,
+                 facilityId, null, null, ""1"");
+ 
+-        // testUtil.clearTables(context);
+-
+         // set FF
+         String ffFileName = directory + ""/config/disable_ff.json"";
+         if (JsonUtil.fileResourceExists(ffFileName))
+@@ -111,6 +117,14 @@ public class CapacityParameterizedTests extends ParameterizedTestBase
+         setApplicationParameterService(
+                 AppointmentApplicationParameters.APT_REDESIGN_ENABLED.getParameterId(),
+                 Boolean.TRUE.toString());
++
++        // Remove old entities that may exist
++        String fileName = directory + ""/config/cleanup.json"";
++        if (JsonUtil.fileResourceExists(fileName))
++        {
++            Document breakdownDocument = JsonUtil.readDocument(directory + ""/config/cleanup.json"");
++            deleteEntities(breakdownDocument);
++        }
+     }
+ 
+     @After
+@@ -120,14 +134,6 @@ public class CapacityParameterizedTests extends ParameterizedTestBase
+ 
+         context.removeAdditionalAttribute(""component-test"", EXTENSION_POINTS);
+ 
+-        // set FF
+-        String fileName = directory + ""/config/breakdown.json"";
+-        if (JsonUtil.fileResourceExists(fileName))
+-        {
+-            Document breakdownDocument = JsonUtil.readDocument(directory + ""/config/breakdown.json"");
+-            deleteEntities(breakdownDocument);
+-        }
+-
+         setApplicationParameterService(
+                 AppointmentApplicationParameters.APT_REDESIGN_ENABLED.getParameterId(),
+                 Boolean.FALSE.toString());
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/output/1.json
+index a61ef2812..92d992b05 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/output/1.json
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test1/output/1.json
+@@ -1,46 +1,39 @@
+ {
+     ""TimeIntervalUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
+-            ""MaxLiveUnloadCpty"": 10,
+-            ""RemainingLiveUnloadCpty"": 9,
++            ""ScheduledAppointments"": 1,
++            ""ScheduledLiveUnloadAppts"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_1.1"",
+             ""AppointmentDate"": ""2034-01-04""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
+-            ""MaxLiveUnloadCpty"": 10,
+-            ""RemainingLiveUnloadCpty"": 9,
++            ""ScheduledAppointments"": 1,
++            ""ScheduledLiveUnloadAppts"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_1.2"",
+             ""AppointmentDate"": ""2034-01-04""
+         }
+     ],
+     ""DayLevelUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
++            ""ScheduledLiveUnloadAppts"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_1.1"",
+             ""AppointmentDate"": ""2034-01-04"",
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
+             ""WeekDayId"": ""3""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
++            ""ScheduledLiveUnloadAppts"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_1.2"",
+             ""AppointmentDate"": ""2034-01-04"",
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
+             ""WeekDayId"": ""3""
+         }
+     ],
+     ""FacilityLevelUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
++            ""ScheduledLiveUnloadAppts"": 1,
+             ""AppointmentDate"": ""2034-01-04"",
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
+             ""WeekDayId"": ""3""
+         }
+     ],
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/output/1.json
+index 99b967b1a..ec0d32661 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/output/1.json
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test10/output/1.json
+@@ -1,27 +1,22 @@
+ {
+     ""TimeIntervalUtilization"": [
+         {
+-            ""TotalCapacity"": 4,
+-            ""RemainingCapacity"": 4,
++            ""ScheduledAppointments"": 0,
+             ""ResourceUnitId"": ""CAPACITY_TEST_10"",
+             ""AppointmentDate"": ""2034-01-04""
+         }
+     ],
+     ""DayLevelUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 10,
++            ""ScheduledAppointments"": 0,
+             ""ResourceUnitId"": ""CAPACITY_TEST_10"",
+             ""AppointmentDate"": ""2034-01-04"",
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
+             ""WeekDayId"": ""3""
+         }
+     ],
+     ""FacilityLevelUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 10,
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++            ""ScheduledAppointments"": 0,
+             ""AppointmentDate"": ""2034-01-04"",
+             ""WeekDayId"": ""3""
+         }
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/output/1.json
+index 7415e88ec..614797840 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/output/1.json
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test11/output/1.json
+@@ -1,60 +1,48 @@
+ {
+     ""TimeIntervalUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_11"",
+             ""AppointmentDate"": ""2034-01-04""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_11"",
+             ""AppointmentDate"": ""2034-01-04""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_11"",
+             ""AppointmentDate"": ""2034-01-04""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_11"",
+             ""AppointmentDate"": ""2034-01-05""
+         }
+     ],
+     ""DayLevelUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 8,
++            ""ScheduledAppointments"": 2,
+             ""ResourceUnitId"": ""CAPACITY_TEST_11"",
+             ""AppointmentDate"": ""2034-01-04"",
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
+             ""WeekDayId"": ""3""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
++            ""ScheduledAppointments"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_11"",
+             ""AppointmentDate"": ""2034-01-05"",
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
+             ""WeekDayId"": ""4""
+         }
+     ],
+     ""FacilityLevelUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 8,
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++            ""ScheduledAppointments"": 2,
+             ""AppointmentDate"": ""2034-01-04"",
+             ""WeekDayId"": ""3""
+         },
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 9,
+-            ""ConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++            ""ScheduledAppointments"": 1,
+             ""AppointmentDate"": ""2034-01-05"",
+             ""WeekDayId"": ""4""
+         }
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/description.txt b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/description.txt
+index 0d3771d01..4075cb3b5 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/description.txt
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/description.txt
+@@ -1 +1 @@
+-The resource unit has no day level capacities assigned, so it should reject the appointment and no capacities should be consumed
++The resource unit has no day level capacities assigned, but that shouldn't matter and the appointment should be scheduled anyway
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/input/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/input/1.json
+index c8ef553f4..f411d7b14 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/input/1.json
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/input/1.json
+@@ -28,14 +28,7 @@
+                             ]
+                         }
+                     ],
+-                    ""DayLevelScope"": [
+-                        {
+-                            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
+-                            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
+-                            ""Exception"": false,
+-                            ""DayLevelCapacity"": []
+-                        }
+-                    ]
++                    ""DayLevelScope"": []
+                 }
+             ]
+         }
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/output/1.json
+index 514546dd6..5c4e628ba 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/output/1.json
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test12/output/1.json
+@@ -1,18 +1,43 @@
+ {
+     ""TimeIntervalUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 10,
++            ""ScheduledAppointments"": 1,
+             ""ResourceUnitId"": ""CAPACITY_TEST_12"",
+             ""AppointmentDate"": ""2034-01-04""
+         }
+     ],
+-    ""DayLevelUtilization"": [],
+-    ""FacilityLevelUtilization"": [],
+-    ""Schedule"": [],
++    ""DayLevelUtilization"": [
++        {
++            ""ScheduledAppointments"": 1,
++            ""AppointmentDate"": ""2034-01-04"",
++            ""ResourceUnitId"": ""CAPACITY_TEST_12"",
++            ""WeekDayId"": ""3""
++        }
++    ],
++    ""FacilityLevelUtilization"": [
++        {
++            ""ScheduledAppointments"": 1,
++            ""AppointmentDate"": ""2034-01-04"",
++            ""WeekDayId"": ""3""
++        }
++    ],
++    ""Schedule"": [
++        {
++            ""StartDateTime"": ""2034-01-04T12:00:00"",
++            ""EndDateTime"": ""2034-01-04T13:00:00"",
++            ""ScheduleResources"": [
++                {
++                    ""ResourceGroupName"": ""CAPACITY_TEST_12"",
++                    ""ResourceName"": ""CAPACITY_TEST_12""
++                }
++            ]
++        }
++    ],
+     ""Appointment"": [
+         {
+-            ""AppointmentSchedules"": []
++            ""AppointmentSchedules"": [
++                {}
++            ]
+         }
+     ]
+ }
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/output/1.json
+index c280c1786..17c22bcc5 100644
+--- a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/output/1.json
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test13/output/1.json
+@@ -1,20 +1,13 @@
+ {
+     ""TimeIntervalUtilization"": [
+         {
+-            ""TotalCapacity"": 10,
+-            ""RemainingCapacity"": 10,
+-            ""MaxLiveLoadCpty"": 0,
+-            ""RemainingLiveLoadCpty"": 0,
+-            ""MaxLiveUnloadCpty"": null,
+-            ""RemainingLiveUnloadCpty"": null,
+-            ""MaxDropEmptyCpty"": null,
+-            ""RemainingDropEmptyCpty"": null,
+-            ""MaxDropUnloadCpty"": null,
+-            ""RemainingDropUnloadCpty"": null,
+-            ""MaxPickupEmptyCpty"": null,
+-            ""RemainingPickupEmptyCpty"": null,
+-            ""MaxPickupLoadCpty"": null,
+-            ""RemainingPickupLoadCpty"": null,
++            ""ScheduledAppointments"": 0,
++            ""ScheduledLiveLoadAppts"": 0,
++            ""ScheduledLiveUnloadAppts"": 0,
++            ""ScheduledDropEmptyAppts"": 0,
++            ""ScheduledDropUnloadAppts"": 0,
++            ""ScheduledPickupEmptyAppts"": 0,
++            ""ScheduledPickupLoadAppts"": 0,
+             ""ResourceUnitId"": ""CAPACITY_TEST_13"",
+             ""AppointmentDate"": ""2034-01-04""
+         }
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test2/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test2/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/config/facilityId.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/config/facilityId.json
+new file mode 100644
+index 000000000..83165797f
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/config/facilityId.json
+@@ -0,0 +1,3 @@
++{
++    ""FacilityId"": ""01""
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/description.txt b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/description.txt
+new file mode 100644
+index 000000000..86a5f6c16
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/description.txt
+@@ -0,0 +1 @@
++An exception time interval scope with 0 capacity should overwrite the default scope, preventing the appointment from being created
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/input/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/input/1.json
+new file mode 100644
+index 000000000..cc0ae0ff6
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/input/1.json
+@@ -0,0 +1,78 @@
++{
++    ""TimeIntervalDefinition"": [
++        {
++            ""TimeIntervalDefinitionId"": ""Wednesday0_24"",
++            ""StartTimeHours"": 0,
++            ""StartTimeMinutes"": 0,
++            ""EndTimeHours"": 24,
++            ""EndTimeMinutes"": 0,
++            ""TimeIntervalLength"": 60,
++            ""Wednesday"": true
++        }
++    ],
++    ""ResourceGroup"": [
++        {
++            ""ResourceGroupName"": ""CAPACITY_TEST_14"",
++            ""ResourceUnit"": [
++                {
++                    ""ResourceId"": ""CAPACITY_TEST_14"",
++                    ""TimeIntervalScope"" : [
++                        {
++                            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
++                            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
++                            ""Exception"": false,
++                            ""TimeIntervalCapacity"": [
++                                {
++                                    ""TimeIntervalDefinition"": ""Wednesday0_24"",
++                                    ""MaxAppointments"": 10,
++                                    ""MaxLiveUnloadAppointments"": 10
++                                }
++                            ]
++                        },
++                        {
++                            ""EffectiveDateTime"": ""2034-01-04T00:00:00"",
++                            ""ExpirationDateTime"": ""2034-01-04T23:59:59"",
++                            ""Exception"": true,
++                            ""TimeIntervalCapacity"": [
++                                {
++                                    ""TimeIntervalDefinition"": ""Wednesday0_24"",
++                                    ""MaxAppointments"": 0,
++                                    ""MaxLiveUnloadAppointments"": 10
++                                }
++                            ]
++                        }
++                    ],
++                    ""DayLevelScope"": [
++                        {
++                            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
++                            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
++                            ""Exception"": false,
++                            ""DayLevelCapacity"": [
++                                {
++                                    ""DaysOfWeekId"": ""All"",
++                                    ""CapacityConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++                                    ""Capacity"": 10,
++                                    ""CapacityConstraintAttribute"": null
++                                }
++                            ]
++                        }
++                    ]
++                }
++            ]
++        }
++    ],
++    ""FacilityDayLevelScope"": [
++        {
++            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
++            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
++            ""Exception"": false,
++            ""FacilityDayLevelCapacity"": [
++                {
++                    ""CapacityConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++                    ""Capacity"": 10,
++                    ""DaysOfWeekId"": ""All""
++                }
++            ]
++        }
++    ]
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/input/appointment.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/input/appointment.json
+new file mode 100644
+index 000000000..40b51bfa3
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/input/appointment.json
+@@ -0,0 +1,17 @@
++{
++  ""Appointment"": [
++    {
++      ""Duration"": ""60"",
++      ""AppointmentStatusId"": ""1000"",
++      ""ArrivalDateTime"": ""2034-01-04T12:00:00"",
++      ""PreferredDateTime"":  ""2034-01-04T12:00:00"",
++      ""AppointmentTypeId"": ""LIVE_UNLOAD"",
++      ""Resources"": [
++        {
++          ""GroupName"": ""CAPACITY_TEST_14"",
++          ""ResourceName"": ""CAPACITY_TEST_14""
++        }
++      ]
++    }
++  ]
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/output/1.json
+new file mode 100644
+index 000000000..0a4e80dcf
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test14/output/1.json
+@@ -0,0 +1,17 @@
++{
++    ""TimeIntervalUtilization"": [
++        {
++            ""ScheduledAppointments"": 0,
++            ""ResourceUnitId"": ""CAPACITY_TEST_14"",
++            ""AppointmentDate"": ""2034-01-04""
++        }
++    ],
++    ""DayLevelUtilization"": [],
++    ""FacilityLevelUtilization"": [],
++    ""Schedule"": [],
++    ""Appointment"": [
++        {
++            ""AppointmentSchedules"": []
++        }
++    ]
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test3/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test3/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/config/facilityId.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/config/facilityId.json
+new file mode 100644
+index 000000000..83165797f
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/config/facilityId.json
+@@ -0,0 +1,3 @@
++{
++    ""FacilityId"": ""01""
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/description.txt b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/description.txt
+new file mode 100644
+index 000000000..0c2503144
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/description.txt
+@@ -0,0 +1 @@
++An exception day level scope with 0 capacity should overwrite the default scope, preventing the appointment from being created
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/input/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/input/1.json
+new file mode 100644
+index 000000000..2da384759
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/input/1.json
+@@ -0,0 +1,79 @@
++{
++    ""TimeIntervalDefinition"": [
++        {
++            ""TimeIntervalDefinitionId"": ""Wednesday0_24"",
++            ""StartTimeHours"": 0,
++            ""StartTimeMinutes"": 0,
++            ""EndTimeHours"": 24,
++            ""EndTimeMinutes"": 0,
++            ""TimeIntervalLength"": 60,
++            ""Wednesday"": true
++        }
++    ],
++    ""ResourceGroup"": [
++        {
++            ""ResourceGroupName"": ""CAPACITY_TEST_15"",
++            ""ResourceUnit"": [
++                {
++                    ""ResourceId"": ""CAPACITY_TEST_15"",
++                    ""TimeIntervalScope"" : [
++                        {
++                            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
++                            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
++                            ""Exception"": false,
++                            ""TimeIntervalCapacity"": [
++                                {
++                                    ""TimeIntervalDefinition"": ""Wednesday0_24"",
++                                    ""MaxAppointments"": 10,
++                                    ""MaxLiveUnloadAppointments"": 10
++                                }
++                            ]
++                        }
++                    ],
++                    ""DayLevelScope"": [
++                        {
++                            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
++                            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
++                            ""Exception"": false,
++                            ""DayLevelCapacity"": [
++                                {
++                                    ""DaysOfWeekId"": ""All"",
++                                    ""CapacityConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++                                    ""Capacity"": 10,
++                                    ""CapacityConstraintAttribute"": null
++                                }
++                            ]
++                        },
++                        {
++                            ""EffectiveDateTime"": ""2034-01-04T00:00:00"",
++                            ""ExpirationDateTime"": ""2034-01-04T23:59:59"",
++                            ""Exception"": true,
++                            ""DayLevelCapacity"": [
++                                {
++                                    ""DaysOfWeekId"": ""All"",
++                                    ""CapacityConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++                                    ""Capacity"": 0,
++                                    ""CapacityConstraintAttribute"": null
++                                }
++                            ]
++                        }
++                    ]
++                }
++            ]
++        }
++    ],
++    ""FacilityDayLevelScope"": [
++        {
++            ""EffectiveDateTime"": ""1980-01-01T00:00:00"",
++            ""ExpirationDateTime"": ""2035-01-01T00:00:00"",
++            ""Exception"": false,
++            ""FacilityDayLevelCapacity"": [
++                {
++                    ""CapacityConstraintTypeId"": ""NUMBER_OF_APPOINTMENTS"",
++                    ""Capacity"": 10,
++                    ""DaysOfWeekId"": ""All""
++                }
++            ]
++        }
++    ]
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/input/appointment.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/input/appointment.json
+new file mode 100644
+index 000000000..82210a683
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/input/appointment.json
+@@ -0,0 +1,17 @@
++{
++  ""Appointment"": [
++    {
++      ""Duration"": ""60"",
++      ""AppointmentStatusId"": ""1000"",
++      ""ArrivalDateTime"": ""2034-01-04T12:00:00"",
++      ""PreferredDateTime"":  ""2034-01-04T12:00:00"",
++      ""AppointmentTypeId"": ""LIVE_UNLOAD"",
++      ""Resources"": [
++        {
++          ""GroupName"": ""CAPACITY_TEST_15"",
++          ""ResourceName"": ""CAPACITY_TEST_15""
++        }
++      ]
++    }
++  ]
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/output/1.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/output/1.json
+new file mode 100644
+index 000000000..7902cc398
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test15/output/1.json
+@@ -0,0 +1,24 @@
++{
++    ""TimeIntervalUtilization"": [
++        {
++            ""ScheduledAppointments"": 0,
++            ""ResourceUnitId"": ""CAPACITY_TEST_15"",
++            ""AppointmentDate"": ""2034-01-04""
++        }
++    ],
++    ""DayLevelUtilization"": [
++        {
++            ""ScheduledAppointments"": 0,
++            ""ResourceUnitId"": ""CAPACITY_TEST_15"",
++            ""AppointmentDate"": ""2034-01-04"",
++            ""WeekDayId"": ""3""
++        }
++    ],
++    ""FacilityLevelUtilization"": [],
++    ""Schedule"": [],
++    ""Appointment"": [
++        {
++            ""AppointmentSchedules"": []
++        }
++    ]
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test4/config/breakdown.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test16/config/cleanup.json
+similarity index 100%
+rename from src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test4/config/breakdown.json
+rename to src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test16/config/cleanup.json
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test16/config/facilityId.json b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test16/config/facilityId.json
+new file mode 100644
+index 000000000..83165797f
+--- /dev/null
++++ b/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test16/config/facilityId.json
+@@ -0,0 +1,3 @@
++{
++    ""FacilityId"": ""01""
++}
+diff --git a/src/component-test/resources/appointment/appointment/parameterizedTests/capacityTests/test16/description.txt b/src/component-test/resources/appointment/appointment/paramet",
+"rizedTe""","Question\(may be to BA\) : Can we have Day Level Capacity defined with both # of appointment as well as for appointment type?
+Same question as Day Level Capacity 
+do we need to set scheduled Appt count as 1 ?
+I only increase the count to 1 if the appointment is scheduled. Otherwise, it will be created with the count as 0
+I’m really not sure why they wouldn’t just create two separate records for that. What would your constraint type Id even look like in that scenario? That being said, it doesn’t look like we have any validations for this field, as I was able to create a capacity record with the constraint type “garbage”
+@{5c3e1980d254b55db84d9cb4} - if they create 2 day level records one for #of appointments and one more for appt type , we are validating against both?
+@{6152e14e289a54006ab32626} One day level utilization record will have all the information needed for both capacity checks, so I pull it once at the start and use it for all the capacity checks for that day
+review : we are checking for facility level capacity at 2 place. line@268 \(here\) and line#290. Do we need at both place?
+do we need to check null for `timeIntervalUtilization.getScheduledLiveUnloadAppts()` ? 
+That’s a fair point. If all the capacity checks pass, I can return the result of the facility capacity check. No reason to list it in two places with two conditions",
+949be2ac0e957cfbe981da242384424b4786067a,"diff --git a/src/component-test/java/com/manh/cp/appointment/appointment/DaylightSavings/AppointmentDaylightChangeParameterizedTest.java b/src/component-test/java/com/manh/cp/appointment/appointment/DaylightSavings/AppointmentDaylightChangeParameterizedTest.java
+index 92a3ad5d8..88421b0ca 100644
+--- a/src/component-test/java/com/manh/cp/appointment/appointment/DaylightSavings/AppointmentDaylightChangeParameterizedTest.java
++++ b/src/component-test/java/com/manh/cp/appointment/appointment/DaylightSavings/AppointmentDaylightChangeParameterizedTest.java
+@@ -44,6 +44,7 @@ import com.manh.cp.appointment.appointment.TestUtil;
+ import com.manh.cp.appointment.appointment.api.service.AppointmentMapService;
+ import com.manh.cp.appointment.appointment.client.dto.calendar.CalendarGridIntervalCapacities;
+ import com.manh.cp.appointment.appointment.client.dto.calendar.CalendarResponseDTO;
++import com.manh.cp.appointment.appointment.constants.FeatureFlagConstants;
+ import com.manh.cp.appointment.appointment.constants.FeatureIdentifier;
+ import com.manh.cp.appointment.appointment.impl.service.AppointmentManager;
+ import com.manh.cp.appointment.appointment.mocks.MockAppointmentUtil;
+@@ -55,6 +56,7 @@ import com.manh.cp.fw.core.logging.Logger;
+ import com.manh.cp.fw.core.rest.RestApiResponse;
+ import com.manh.cp.fw.dmtest.JsonUtil;
+ import com.manh.cp.fw.entity.domain.entity.EntityList;
++import com.manh.cp.fw.featureflags.test.AssumeFlagEnabled;
+ import com.manh.cp.fw.query.Query;
+ import com.manh.cp.schedule.calendar.api.service.CalendarDefinitionService;
+ import com.manh.cp.schedule.utilization.fetch.FetcherFactory;
+@@ -118,6 +120,9 @@ public class AppointmentDaylightChangeParameterizedTest extends ParameterizedTes
+ 
+         context.setTransactionAttribute(""component-test"",
+                 FeatureIdentifier.FeatureFlags24_3.CONSIDER_DAY_LIGHT_SAVINGS_FOR_SOUTH_AMERICA.getFeatureId(), true);
++        context.setTransactionAttribute(""component-test"",
++                FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE,
++                true);
+ 
+         dataRemover.removeAllData(context);
+         clearCache(""CalendarDefinition::DomainEntity::retail"");
+@@ -188,6 +193,7 @@ public class AppointmentDaylightChangeParameterizedTest extends ParameterizedTes
+ 
+     @Test
+     @Transactional(propagation = Propagation.REQUIRES_NEW)
++    @AssumeFlagEnabled(FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE)
+     public void testCalendarData()
+     {
+         logger.debug("">> Test Scenarios for Time Zone : [{}]"", timeZone);
+diff --git a/src/component-test/java/com/manh/cp/appointment/appointment/RecommendationTests.java b/src/component-test/java/com/manh/cp/appointment/appointment/RecommendationTests.java
+index 3834dcdcf..f69552040 100644
+--- a/src/component-test/java/com/manh/cp/appointment/appointment/RecommendationTests.java
++++ b/src/component-test/java/com/manh/cp/appointment/appointment/RecommendationTests.java
+@@ -202,11 +202,15 @@ public class RecommendationTests extends AbstractComponentTest
+         appointmentParameterCriteriaService.save(context, appointmentParameterCriteria);
+ 
+         context.setTransactionAttribute(""component-test"",
+-                FeatureIdentifier.FeatureFlags99_9.CONSIDER_DAY_LIGHT_SAVING_CHANGE.getFeatureId(),
++                FeatureIdentifier.FeatureFlags24_3.CONSIDER_DAY_LIGHT_SAVINGS_FOR_SOUTH_AMERICA.getFeatureId(),
+                 true);
++
+         context.setTransactionAttribute(""component-test"",
+                 FeatureIdentifier.FeatureFlags24_3.AVOID_RECOMMENDING_PAST_DATE_TIMESLOTS.getFeatureId(),
+                 true);
++        context.setTransactionAttribute(""component-test"",
++                FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE,
++                true);
+     }
+ 
+     @After
+@@ -215,8 +219,11 @@ public class RecommendationTests extends AbstractComponentTest
+         mockAppointmentUtil.setFacilityTimeZone(null);
+ 
+         context.setTransactionAttribute(""component-test"",
+-                FeatureIdentifier.FeatureFlags99_9.CONSIDER_DAY_LIGHT_SAVING_CHANGE.getFeatureId(),
++                FeatureIdentifier.FeatureFlags24_3.CONSIDER_DAY_LIGHT_SAVINGS_FOR_SOUTH_AMERICA.getFeatureId(),
+                 false);
++        context.setTransactionAttribute(""component-test"",
++                FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE,
++                true);
+ 
+         TimeZone resetTimeZone = TimeZone.getTimeZone(""UTC"");
+         mockAppointmentUtil.setFacilityTimeZone(resetTimeZone);
+@@ -1631,6 +1638,7 @@ public class RecommendationTests extends AbstractComponentTest
+      * Test to verify recommednations are provided when the requested timeslot is 11:30-11:45pM and timezone is not UTC
+      */
+     @Test
++    @AssumeFlagEnabled(FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE)
+     public void testRecommendationAndCreationForLast11PMWindow() throws Exception
+     {
+         TimeZone timeZone = TimeZone.getTimeZone(""America/New_York"");
+diff --git a/src/component-test/java/com/manh/cp/appointment/appointment/ScheduleCarrierAppointmentTest.java b/src/component-test/java/com/manh/cp/appointment/appointment/ScheduleCarrierAppointmentTest.java
+index 538ed8e51..5458020f0 100644
+--- a/src/component-test/java/com/manh/cp/appointment/appointment/ScheduleCarrierAppointmentTest.java
++++ b/src/component-test/java/com/manh/cp/appointment/appointment/ScheduleCarrierAppointmentTest.java
+@@ -296,10 +296,10 @@ public class ScheduleCarrierAppointmentTest extends AbstractComponentTest
+         String appointmentPath = ""/appointment/appointment/scheduleCarrierAppointmentTest/AppointmentWithVendorPO.json"";
+         String appointmentId = ""ROLLOVER_ERROR_WITH_NO_UTILIZATION"";
+         Document appointmentDocument = JsonUtil.readDocument(appointmentPath);
+-        appointmentDocument.put(""WindowEndDateTime"", LocalDateTime.now().plusWeeks(2).toString());
++        appointmentDocument.put(""WindowEndDateTime"", LocalDateTime.now().plusWeeks(3).toString());
+         appointmentDocument.put(""AppointmentId"", appointmentId);
+-        LocalDateTime preferredAppointmentTime = testUtil.getNextDayOfWeek(
+-                LocalDateTime.now().plusWeeks(1).toLocalDate().atTime(17, 0), DayOfWeek.TUESDAY);
++        LocalDateTime preferredAppointmentTime =
++                LocalDateTime.now().plusWeeks(2).toLocalDate().atTime(17, 0);
+ 
+         preferredAppointmentTime = preferredAppointmentTime.withNano(0);
+ 
+diff --git a/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java b/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java
+index 8f36e6296..dd0b50b37 100644
+--- a/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java
++++ b/src/main/java/com/manh/cp/appointment/appointment/constants/FeatureFlagConstants.java
+@@ -32,4 +32,6 @@ public class FeatureFlagConstants
+     public static final String FF_24_4_ERROR_MESSAGES_WITH_APPOINTMENT_ID = ""SUP-516677#2024-08"";
+ 
+     public static final String FF_24_4_FIX_EDIT_APPOINTMENT_DATE = ""SUP-522225#2024-08"";
++
++    public static final String FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE = ""SUP-504432#2024-08"";
+ }
+diff --git a/src/main/java/com/manh/cp/appointment/core/impl/service/FacilityDayLevelScheduleAssociator.java b/src/main/java/com/manh/cp/appointment/core/impl/service/FacilityDayLevelScheduleAssociator.java
+index 753450e44..181ecafe1 100644
+--- a/src/main/java/com/manh/cp/appointment/core/impl/service/FacilityDayLevelScheduleAssociator.java
++++ b/src/main/java/com/manh/cp/appointment/core/impl/service/FacilityDayLevelScheduleAssociator.java
+@@ -29,6 +29,7 @@ import org.springframework.stereotype.Component;
+ 
+ import com.manh.cp.appointment.appointment.api.service.FeatureFlagService;
+ import com.manh.cp.appointment.appointment.constants.AppointmentConstants;
++import com.manh.cp.appointment.appointment.constants.FeatureFlagConstants;
+ import com.manh.cp.appointment.appointment.impl.service.AppointmentUtil;
+ import com.manh.cp.appointment.appointment.impl.service.EntityToDTOConverter;
+ import com.manh.cp.appointment.core.api.domain.*;
+@@ -546,6 +547,14 @@ public class FacilityDayLevelScheduleAssociator
+         ZonedDateTime sequenceStartTimeAtFacility;
+ 
+         LocalDateTime currentTime = LocalDateTime.now(ZoneId.of(AppointmentConstants.DEFAULT_TIMEZONE));
++        if (featureFlagService
++                .isOn(FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE))
++        {
++            sequenceStartTimeAtFacility = ZonedDateTime.of(LocalDateTime.of(1972, 1, 1, startHour, startMinutes),
++                    timeZone.toZoneId());
++        }
++        else
++        {
+             int currentYear = currentTime.getYear();
+             Month currentMonth = currentTime.getMonth();
+             int currentDay = currentTime.getDayOfMonth();
+@@ -553,6 +562,7 @@ public class FacilityDayLevelScheduleAssociator
+             sequenceStartTimeAtFacility =
+                     ZonedDateTime.of(LocalDateTime.of(currentYear, currentMonth, currentDay, startHour, startMinutes),
+                             timeZone.toZoneId());
++        }
+ 
+         for (int i = 0; i < 8; i++)
+         {
+diff --git a/src/main/java/com/manh/cp/appointment/core/impl/service/ResourceAvailabilityServiceImpl.java b/src/main/java/com/manh/cp/appointment/core/impl/service/ResourceAvailabilityServiceImpl.java
+index 6fe9f7bbe..0c89ddb36 100644
+--- a/src/main/java/com/manh/cp/appointment/core/impl/service/ResourceAvailabilityServiceImpl.java
++++ b/src/main/java/com/manh/cp/appointment/core/impl/service/ResourceAvailabilityServiceImpl.java
+@@ -48,6 +48,7 @@ import com.manh.cp.appointment.appointment.client.Constants.ErrorDefinitionIdBun
+ import com.manh.cp.appointment.appointment.client.dto.ApplicableAppointmentParametersDTO;
+ import com.manh.cp.appointment.appointment.constants.AppointmentConstants;
+ import com.manh.cp.appointment.appointment.constants.CapacityConstraintLevel;
++import com.manh.cp.appointment.appointment.constants.FeatureFlagConstants;
+ import com.manh.cp.appointment.appointment.constants.FeatureIdentifier;
+ import com.manh.cp.appointment.appointment.impl.service.AppointmentUtil;
+ import com.manh.cp.appointment.core.api.domain.CapacityScope;
+@@ -1351,6 +1352,22 @@ public class ResourceAvailabilityServiceImpl<T extends AppointmentInputDTO> impl
+                         ImmutablePair.of(dayLightAdjustedScheduleUtilzation, capacity);
+                 dayLightAdjustedScheduleUtilizations.add(fsSchedulePair);
+             }
++            else if (featureFlagService
++                    .isOn(FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE)
++                    && wasConfigurationMadeDuringDayLightSavings && !isInputInDaylightSavings)
++            {
++                ScheduleUtilization.Builder builder = ScheduleUtilization.newBuilder();
++                DateTimeRange dayLightAdjustedDateTimeRange = DateTimeRange
++                        .from(dateTimeRangeFW.getStart().plusHours(1), dateTimeRangeFW.getEnd().plusHours(1));
++                ScheduleUtilization dayLightAdjustedScheduleUtilzation = builder
++                        .withCalendarScheduleId(fwCalendarScheduleId)
++                        .withDateTimeRange(dayLightAdjustedDateTimeRange)
++                        .withCapacityTypeUtilizations(capacityTypeUtilizationsFW)
++                        .build();
++                Pair<ScheduleUtilization, Integer> fsSchedulePair =
++                        ImmutablePair.of(dayLightAdjustedScheduleUtilzation, capacity);
++                dayLightAdjustedScheduleUtilizations.add(fsSchedulePair);
++            }
+             else
+             {
+                 Pair<ScheduleUtilization, Integer> fsSchedulePair =
+@@ -1365,19 +1382,59 @@ public class ResourceAvailabilityServiceImpl<T extends AppointmentInputDTO> impl
+         return dayLightAdjustedScheduleUtilizations;
+     }
+ 
+-    protected List<LocalDateTime> getStartOfDaysWithInWindow(LocalDateTime windowStart, LocalDateTime windowEnd,
++    protected List<LocalDateTime> getStartOfDaysWithInWindow(LocalDateTime windowStart,
++            LocalDateTime windowEnd,
+             TimeZone facilityTimeZone)
+     {
+         logger.debug(""windowStart = {}, windowEnd = {}, facilityTimeZone = {} "", windowStart, windowEnd,
+                 facilityTimeZone);
+         LocalDateTime timeOfDay = windowStart;
+ 
++        boolean wasConfigurationMadeDuringDayLightSavings =
++                appointmentUtil.wasConfigurationMadeDuringDayLightSavings(facilityTimeZone);
++        boolean isConsiderDayLightSavingsForSouthAmericaFFEnabled = featureFlagService
++                .isOn(FeatureIdentifier.FeatureFlags24_3.CONSIDER_DAY_LIGHT_SAVINGS_FOR_SOUTH_AMERICA);
++        boolean isConsiderDayLightSavingChangeFFEnabled = featureFlagService
++                .isOn(FeatureIdentifier.FeatureFlags99_9.CONSIDER_DAY_LIGHT_SAVING_CHANGE);
++
+         ZonedDateTime windowStartUTC = ZonedDateTime.of(timeOfDay, ZoneId.of(""UTC""));
+         ZonedDateTime windowStartFacility = windowStartUTC.withZoneSameInstant(facilityTimeZone.toZoneId());
+         ZonedDateTime dayStartAtFacility = windowStartFacility.withHour(0).withMinute(0).withSecond(0).withNano(0);
+         ZonedDateTime dayStartUTC = dayStartAtFacility.withZoneSameInstant(ZoneId.of(""UTC""));
+         LocalDateTime dayStart = dayStartUTC.toLocalDateTime();
+ 
++        if (featureFlagService
++                .isOn(FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE))
++        {
++            if (wasConfigurationMadeDuringDayLightSavings)
++            {
++                if (!appointmentUtil.isInputInDaylightSavings(windowEnd, facilityTimeZone,
++                        isConsiderDayLightSavingsForSouthAmericaFFEnabled, isConsiderDayLightSavingChangeFFEnabled))
++                {
++                    windowEnd = windowEnd.minusHours(1);
++                }
++                if (!appointmentUtil.isInputInDaylightSavings(dayStart, facilityTimeZone,
++                        isConsiderDayLightSavingsForSouthAmericaFFEnabled, isConsiderDayLightSavingChangeFFEnabled))
++                {
++                    dayStart = dayStart.minusHours(1);
++                }
++            }
++            else
++            {
++                if (appointmentUtil.isInputInDaylightSavings(windowEnd, facilityTimeZone,
++                        isConsiderDayLightSavingsForSouthAmericaFFEnabled, isConsiderDayLightSavingChangeFFEnabled))
++                {
++                    windowEnd = windowEnd.plusHours(1);
++                }
++                if (appointmentUtil.isInputInDaylightSavings(dayStart, facilityTimeZone,
++                        isConsiderDayLightSavingsForSouthAmericaFFEnabled, isConsiderDayLightSavingChangeFFEnabled))
++                {
++                    dayStart = dayStart.plusHours(1);
++                }
++
++            }
++        }
++
+         List<LocalDateTime> listOfDayStarts = new ArrayList<>();
+         listOfDayStarts.add(dayStart);
+ 
+diff --git a/src/main/java/com/manh/cp/appointment/core/impl/service/UtilizationHelper.java b/src/main/java/com/manh/cp/appointment/core/impl/service/UtilizationHelper.java
+index 08d3aaf09..5309355a2 100644
+--- a/src/main/java/com/manh/cp/appointment/core/impl/service/UtilizationHelper.java
++++ b/src/main/java/com/manh/cp/appointment/core/impl/service/UtilizationHelper.java
+@@ -34,6 +34,7 @@ import org.apache.commons.lang3.tuple.Pair;
+ import org.springframework.beans.factory.annotation.Autowired;
+ 
+ import com.manh.cp.appointment.appointment.api.service.FeatureFlagService;
++import com.manh.cp.appointment.appointment.constants.FeatureFlagConstants;
+ import com.manh.cp.appointment.appointment.constants.FeatureIdentifier;
+ import com.manh.cp.appointment.appointment.impl.service.AppointmentUtil;
+ import com.manh.cp.appointment.core.api.domain.CapacityScope;
+@@ -376,6 +377,24 @@ public class UtilizationHelper<T extends AppointmentInputDTO>
+             }
+         }
+ 
++        // Changes for Southern Hemisphere
++
++        if (featureFlagService
++                .isOn(FeatureFlagConstants.FF_99_9_FIX_FACILITY_DAY_LEVEL_SCOPE_FOR_NON_UTC_TIMEZONE)
++                && wasConfigurationMadeDuringDayLightSavings)
++        {
++            if (!appointmentUtil.isInputInDaylightSavings(startTime, facilityTimeZone,
++                    isConsiderDayLightSavingsForSouthAmericaFFEnabled, isConsiderDayLightSavingChangeFFEnabled))
++            {
++                startTime = startTime.minusHours(1);
++            }
++            if (!appointmentUtil.isInputInDaylightSavings(endTime, facilityTimeZone,
++                    isConsiderDayLightSavingsForSouthAmericaFFEnabled, isConsiderDayLightSavingChangeFFEnabled))
++            {
++                endTime = endTime.minusHours(1);
++            }
++        }
++
+         LocalDateTime currentTimeBeforeFetchUtilization = LocalDateTime.now();
+ 
+         FetcherResponse response = fetcherFactory.getFetcher(FetchType.FETCH_BY_WINDOW)","why do we need to set this ?
+resolve sonar issues please
+we may be removing `CONSIDER_DAY_LIGHT_SAVING_CHANGE` FF. `CONSIDER_DAY_LIGHT_SAVINGS_FOR_SOUTH_AMERICA` will be used to FF protect the daylight saving changes.
+move to new FF format we are moving to.
+with this we will have some data in 1972 date and some in current year. we have tested with mix of data , only old data format  and only new data format?
+move ff to penalty box. we can enabled for customer if they face this issue.
+We have tested with new data format. This will be called only when a client is creating/editing the Facility Day Level Scope."
+4acc32ac9bf2dde41083bac73dc15f89cc69345d,"diff --git a/build.gradle b/build.gradle
+index 71e710c22..4ef6125d0 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -64,8 +64,8 @@ project.ext.set(""gitRevision"", org.ajoberstar.grgit.Grgit.open(dir: project.root
+ dependencies {
+     implementation project(':appointment-client')
+ 
+-    annotationProcessor(libraries.javax_annotation_api)
+-    annotationProcessor(libraries.javax_persistence)
++    annotationProcessor(libraries.jakarta_annotation_api)
++    annotationProcessor(libraries.jakarta_persistence)
+     annotationProcessor(libraries.querydsl_apt)
+     annotationProcessor(libraries.querydsl_apt_jpa)
+ 
+diff --git a/client/appointment-client.gradle b/client/appointment-client.gradle
+index ae91b4c6d..54634be42 100644
+--- a/client/appointment-client.gradle
++++ b/client/appointment-client.gradle
+@@ -41,7 +41,7 @@ dependencies {
+     implementation(libraries.jackson_core)
+     implementation(libraries.jackson_databind)
+     implementation(libraries.jackson_datatype_jsr310)
+-    implementation(libraries.javax_annotation_api)
++    implementation(libraries.jakarta_annotation_api)
+ 
+     implementation(libraries.fw_entity_client)
+     implementation(libraries.fw_codegen_model)
+diff --git a/gradle.properties b/gradle.properties
+index b136b3610..418f1cea5 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -1 +1 @@
+-dbChecksum=b97f193b19c08d1dfa63251627e8d203
++dbChecksum=3ac3ea18b0b93372f2fa6e24982c7068
+diff --git a/libraries.gradle b/libraries.gradle
+index 78013e253..cfe13577b 100644
+--- a/libraries.gradle
++++ b/libraries.gradle
+@@ -1,8 +1,8 @@
+ ext {
+-    cloudPlatformVersion = '1.15.0.SB2'
++    cloudPlatformVersion = '1.16.0.SB2'
+     powermockVersion = '2.0.9'
+     querydslVersion = '3.7.4'
+-    sceReleaseVersion = '2024.05.3.SB2'
++    sceReleaseVersion = '2024.07.2.SB2'
+     springBootVersion = '2.3.9.RELEASE'
+     springCloudVersion = 'Hoxton.SR12'
+     shipmentVersion='1.822.0-SNAPSHOT'
+@@ -22,8 +22,8 @@ ext {
+         fw_codegen_runner: ""com.manh.cp.fw:fw-codegen-runner"",
+         fw_messaging_rabbitmq: ""com.manh.cp.fw:fw-messaging-rabbitmq"",
+         google_cloud_storage: ""com.google.cloud:google-cloud-storage:2.2.3"",
+-        javax_annotation_api: ""javax.annotation:javax.annotation-api"",
+-        javax_persistence: ""org.eclipse.persistence:javax.persistence"",
++        jakarta_annotation_api: ""jakarta.annotation:jakarta.annotation-api"",
++        jakarta_persistence: ""org.eclipse.persistence:jakarta.persistence"",
+         jaxb_api: ""javax.xml.bind:jaxb-api:2.3.0"",
+         jaxws_api: ""javax.xml.ws:jaxws-api:2.3.1"",
+         powermock_api_mockito2: ""org.powermock:powermock-api-mockito2:${powermockVersion}"",
+diff --git a/src/main/resources/seedData/resources_1__apt.json b/src/main/resources/seedData/resources_1__apt.json
+index 373b05928..73c92c5e6 100644
+--- a/src/main/resources/seedData/resources_1__apt.json
++++ b/src/main/resources/seedData/resources_1__apt.json
+@@ -20030,6 +20030,166 @@
+       ""ResourceTypeId"": ""system"",
+       ""ResourceDescription"": ""Get ProcLock by PK or Business Keys"",
+       ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get errorResourceType(s)"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Create ErrorResourceType"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/deleteBusinessKey"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Delete errorResourceType By Business Keys"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/excelTemplate"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get Excel template for import"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/export"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Export ErrorResourceType"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/exportExcel"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Export ErrorResourceType to Excel"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/import"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Deprecated Api - Import errorResourceType(s)"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/importExcel"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Import errorResourceType(s) from Excel"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/resourceTypeId/{resourceTypeId}"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get ErrorResourceType By Business Keys"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""PUT"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/resourceTypeId/{resourceTypeId}"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Update ErrorResourceType By Business Keys"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/save"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Save errorResourceType"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/search"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Search using complex query"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/{pk}"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get ErrorResourceType by PK"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""PUT"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/{pk}"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Update errorResourceType"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""DELETE"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/{pk}"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Delete errorResourceType"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": true,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceTypeByPKorBK"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get ErrorResourceType by PK or Business Keys"",
++      ""ComponentRouteName"": ""appointment""
+     }
+   ]
+ }
+diff --git a/src/main/resources/seedData/resources_2__apt.json b/src/main/resources/seedData/resources_2__apt.json
+index 8cf014482..ed8d1586c 100644
+--- a/src/main/resources/seedData/resources_2__apt.json
++++ b/src/main/resources/seedData/resources_2__apt.json
+@@ -19392,6 +19392,96 @@
+       ""ResourceTypeId"": ""system"",
+       ""ResourceDescription"": ""Get InheritanceStrategy by PK"",
+       ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/aggregate"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Aggregate Search using complex query"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/asyncExportExcel"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Asynchronously export ErrorResourceType(s) to excel workbook."",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/asyncImportExcel"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Asynchronously Import ErrorResourceType(s) from Excel workbook"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::admin"",
++      ""HttpMethod"": ""POST"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/bulkImport"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Bulk Import errorResourceType(s)"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/exportByPKRange"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Export ErrorResourceType(s) for a range of PKs"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/listRangePKs"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""List of Range PKs errorResourceType(s)"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceType/pkRange/search"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get errorResourceType(s) for a range of PKs"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceTypeByBK"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get ErrorResourceType By Business Keys"",
++      ""ComponentRouteName"": ""appointment""
++    },
++    {
++      ""generated"": false,
++      ""ResourceId"": ""appointment::transaction::read"",
++      ""HttpMethod"": ""GET"",
++      ""Url"": ""/appointment/api/errorHandler/errorResourceTypeByPK"",
++      ""IsConfigurable"": false,
++      ""ResourceTypeId"": ""system"",
++      ""ResourceDescription"": ""Get ErrorResourceType by PK"",
++      ""ComponentRouteName"": ""appointment""
+     }
+   ]
+ }
+diff --git a/version.txt b/version.txt
+index 62d44807d..48b14e6b2 100644
+--- a/version.txt
++++ b/version.txt
+@@ -1 +1 @@
+-20.13.0
++20.14.0","![](https://bitbucket.org/repo/9p65goR/images/3717427412-image.png)
+‌
+![](https://bitbucket.org/repo/9p65goR/images/4229483173-image.png)
+‌
+![](https://bitbucket.org/repo/9p65goR/images/2221178231-image.png)
+‌"
