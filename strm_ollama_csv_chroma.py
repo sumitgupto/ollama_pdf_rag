@@ -1,8 +1,5 @@
 """
-Streamlit application for CSV-based Retrieval-Augmented Generation (RAG) using Ollama + LangChain.
-
-This application allows users to upload a CSV, process it,
-and then ask questions about the content using a selected language model.
+streamlit run strm_ollama_csv_chroma.py nomic-embed-text 200 25 llama3.1 25
 """
 
 import streamlit as st
@@ -10,21 +7,19 @@ import logging
 import os
 import tempfile
 import shutil
-import pdfplumber
 import ollama
 
-#from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_chroma import Chroma
+
+from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_models import ChatOllama
 from langchain_core.runnables import RunnablePassthrough
-from langchain.retrievers.multi_query import MultiQueryRetriever
+
 from typing import List, Tuple, Dict, Any, Optional
 
-from langchain_community.document_loaders import UnstructuredExcelLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
 import csv
 csv.field_size_limit(10**6)
@@ -45,54 +40,43 @@ n = len(sys.argv)
 logger.info("Total arguments passed: %s", n)
 
 for i in range(1, n):
-    embed_model_args = sys.argv[1]
+    embed_model_args = sys.argv[1] #text-embedding-3-large
     chunk_size_args = sys.argv[2]
     chunk_overlap_args = sys.argv[3]
-    #llm_model_args = sys.argv[2]
+    llm_model_args = sys.argv[4] #gpt-4o-mini
+    k_args = sys.argv[5] #25
     
 #print("llm_model from Args:", llm_model_args)
 logger.info("embed_model from Args: %s", embed_model_args)
 logger.info("chunk_size from Args: %s", chunk_size_args)
 logger.info("chunk_overlap from Args: %s", chunk_overlap_args)
+logger.info("llm_model from Args: %s", llm_model_args)
+logger.info("k_args from Args: %s", k_args)
 
+#read dotenv
+from dotenv import load_dotenv, find_dotenv
+founddotenv = load_dotenv(find_dotenv(), override=True) 
+logger.info("Found .env: %s", founddotenv)
 
 # Streamlit page configuration
 st.set_page_config(
-    page_title="Ollama CSV RAG Streamlit UI",
+    page_title="OLLAMA-CHROMA CSV RAG",
     page_icon="🎈",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 @st.cache_resource(show_spinner=True)
+#hardcode model names
+@st.cache_resource(show_spinner=True)
 def extract_model_names(
-    models_info: Dict[str, List[Dict[str, Any]]],
-) -> Tuple[str, ...]:
-    """
-    Extract model names from the provided models information.
-
-    Args:
-        models_info (Dict[str, List[Dict[str, Any]]]): Dictionary containing information about available models.
-
-    Returns:
-        Tuple[str, ...]: A tuple of model names.
-    """
+    models_info: Dict[str, List[Dict[str, Any]]],) -> Tuple[str, ...]:
     logger.info("Extracting model names from models_info")
     model_names = tuple(model["name"] for model in models_info["models"])
     logger.info(f"Extracted model names: {model_names}")
     return model_names
 
-
 def create_vector_db(file_upload) -> Chroma:
-    """
-    Create a vector database from an uploaded CSV file.
-
-    Args:
-        file_upload (st.UploadedFile): Streamlit file upload object containing the CSV.
-
-    Returns:
-        Chroma: A vector store containing the processed document chunks.
-    """
     logger.info(f"Creating vector DB from file upload: {file_upload.name}")
     temp_dir = tempfile.mkdtemp()
 
@@ -103,114 +87,126 @@ def create_vector_db(file_upload) -> Chroma:
         #loader = UnstructuredPDFLoader(path)
         loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={'delimiter': ','})
         data = loader.load()
+        logger.info("Total documents : %s", len(data))
+        st.session_state["data"] = data
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=int(chunk_size_args), chunk_overlap=int(chunk_overlap_args))
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=int(chunk_size_args), chunk_overlap=int(chunk_overlap_args))
     chunks = text_splitter.split_documents(data)
+    logger.info("Total Chunks : %s", len(chunks))
+    st.session_state["chunks"] = chunks
     logger.info("Document split into chunks")
 
+    ##code to batch
+    count_max = 2000
+    quotient = len(chunks) // count_max
+    remainder = len(chunks) % count_max
+    if remainder > 0:
+        total_chunks = quotient + 1
+    else :
+        total_chunks = quotient
+    logger.info("Number of Chunk Groups : %s", total_chunks)
+
+    chunk_list = []
+    for i in range(total_chunks):
+        chunk_name = f"chunk-{i}"
+        chunk_list.append(chunk_name)
+        logger.info("Chunk name : %s", chunk_name)
+    logger.info("Chunk List : %s", len(chunk_list))
+
+    ##end of batch logic
     embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
-    persist_directory_csv ='./chroma_db_csv'
-    vector_db = Chroma.from_documents(
-        documents=chunks, embedding=embeddings, persist_directory=persist_directory_csv, collection_name="myRAG-CSV")
-    logger.info("Vector DB created")
+    
+    vector_db = insert_into_chroma(chunks, chunk_list, count_max, embeddings)
+
+    logger.info("Collection count in DB : %s", vector_db._collection.count())
 
     shutil.rmtree(temp_dir)
     logger.info(f"Temporary directory {temp_dir} removed")
+
     return vector_db
 
+def insert_into_chroma(chunks, chunk_list, count_max, embeddings):
+    remaining = len(chunks)
+    for name in chunk_list:
+        if remaining > count_max :
+            name = chunks[:count_max]
+            remaining = remaining - count_max
+            logger.info("Chunk Size : %s", len(name))
+            vectorstore = send_chunks_to_chroma_Db(name, embeddings)
+            logger.info("sent chunks to DB : %s", len(name))
+        else :
+            name = chunks[:remaining]
+            logger.info("Last Chunk Size : %s", len(name))
+            vectorstore = send_chunks_to_chroma_Db(name, embeddings)
+            logger.info("sent last chunks to DB : %s", len(name))
+    return vectorstore
+
+def send_chunks_to_chroma_Db (subchunk, embeddings) :   
+    persist_directory_csv ='./chroma_db_csv_ollama'
+    vector_db = Chroma.from_documents(
+        documents = subchunk,
+        embedding = embeddings,
+        persist_directory=persist_directory_csv 
+        )
+    logger.info("Added chunks to DB : %s", len(subchunk))
+    return vector_db
 
 def process_question(question: str, vector_db: Chroma, selected_model: str) -> str:
-    """
-    Process a user question using the vector database and selected language model.
 
-    Args:
-        question (str): The user's question.
-        vector_db (Chroma): The vector database containing document embeddings.
-        selected_model (str): The name of the selected language model.
-
-    Returns:
-        str: The generated response to the user's question.
-    """
     logger.info(f"""Processing question: {question} using model: {selected_model}""")
-    llm = ChatOllama(model=selected_model, temperature=0)
-
-    QUERY_PROMPT = PromptTemplate(
-        input_variables=["question"],
-        template="""You are an AI language model assistant and you understand git commit data.
-        You shall review documents containing git commits. The first column is "commit id", 2nd column is "Changes" 
-        and 3rd column is "Comments".
-        you should be able to count git commits and find similarities and dissimilarities between 2 git commits
-        Your task is to generate 3 different versions of the given user question to retrieve relevant documents from
-        a vector database. By generating multiple perspectives on the user question, your
-        goal is to help the user overcome some of the limitations of the distance-based
-        similarity search. Provide these alternative questions separated by newlines.
-        Original question: {question}""",
-    )
-
-    retriever = MultiQueryRetriever.from_llm(
-        vector_db.as_retriever(), llm, prompt=QUERY_PROMPT
-    )
-
-    template = """Answer the question based ONLY on the following context:
-    {context}
-    Question: {question}
+    
+    PROMPT_TEMPLATE = """
+    Human: You are an AI assistant, and provides answers to questions by using fact based and statistical information when possible.
+    Use the following pieces of information to provide a concise answer to the question enclosed in <question> tags.
+    Your will be presented with a document containing 3 columns
+    The first column is "Commit ID". This is the primary key and will always be unique
+    The Second column is "Changes"
+    The Third column is "Comments"
+    Each unique "Commit ID" will be a row containing "Changes" and "Comments"
+    So, if there are 5 unique commit IDs, there would be 5 rows
+    Look through the whole document before answering the question.
     If you don't know the answer, just say that you don't know, don't try to make up an answer.
-    Only provide the answer from the {context}, nothing else.
-    Add snippets of the context you used to answer the question.
-    """
 
-    prompt = ChatPromptTemplate.from_template(template)
+    <context>
+    {context}
+    </context>
+
+    <question>
+    {question}
+    </question>
+
+    The response should be specific and use statistics or numbers when possible.
+
+    Assistant:"""
+
+    prompt = PromptTemplate(
+        template=PROMPT_TEMPLATE, input_variables=["context", "question"]
+    )
+    logger.info("got the prompt template")
+
+    retriever = vector_db.as_retriever(search_kwargs={"k": int(k_args)})
+    logger.info("got the retriever")
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+    logger.info("got the def_fomat")
+
+    llm = ChatOllama(model=selected_model, temperature=0)
+    logger.info("got the llm")
 
     chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | prompt
         | llm
         | StrOutputParser()
     )
 
+    logger.info("got the chain")
+    
     response = chain.invoke(question)
     logger.info("Question processed and response generated")
     return response
-
-
-@st.cache_data
-def extract_all_pages_as_images(file_upload) -> List[Any]:
-    """
-    Extract all pages from a CSV file as images.
-
-    Args:
-        file_upload (st.UploadedFile): Streamlit file upload object containing the CSV.
-
-    Returns:
-        List[Any]: A list of image objects representing each page of the PDF.
-    """
-    logger.info(f"""Extracting all pages as images from file: {file_upload.name}""")
-
-    import pdfkit
-    import pandas as pd
-
-    df = pd.read_csv(file_upload)
-    html_table = df.to_html()
-
-    options = {    'page-size': 'Letter',
-    'margin-top': '0mm',
-    'margin-right': '0mm',
-    'margin-bottom': '0mm',
-    'margin-left': '0mm'
-    }
-
-    pdf_name = "image.pdf"
-    #pdfkit.configuration(wkhtmltopdf='D:/htmltopdf/wkhtmltopdf/bin')
-    pdfkit.from_string(html_table, pdf_name, options=options)
-
-    pdf_pages = []
-    
-    with pdfplumber.open(pdf_name) as pdf:
-        pdf_pages = [page.to_image().original for page in pdf.pages]
-    
-    logger.info("PDF pages extracted as images")
-    return pdf_pages
-
 
 def delete_vector_db(vector_db: Optional[Chroma]) -> None:
     """
@@ -234,13 +230,8 @@ def delete_vector_db(vector_db: Optional[Chroma]) -> None:
 
 
 def main() -> None:
-    """
-    Main function to run the Streamlit application.
 
-    This function sets up the user interface, handles file uploads,
-    processes user queries, and displays results.
-    """
-    st.subheader("🧠 Ollama CSV RAG playground", divider="gray", anchor=False)
+    st.subheader("🧠 Ollama CSV Chroma RAG playground", divider="gray", anchor=False)
 
     models_info = ollama.list()
     available_models = extract_model_names(models_info)
@@ -267,18 +258,9 @@ def main() -> None:
         if st.session_state["vector_db"] is None:
             st.session_state["vector_db"] = create_vector_db(file_upload)
         
-        #first covert to pdf and then pass to this call
-        pdf_pages = extract_all_pages_as_images(file_upload)
-        st.session_state["pdf_pages"] = pdf_pages
-
-        zoom_level = col1.slider(
-            "Zoom Level", min_value=100, max_value=1000, value=700, step=50
-        )
-
         with col1:
-            with st.container(height=410, border=True):
-                for page_image in pdf_pages:
-                    st.image(page_image, width=zoom_level)
+            with st.container(height=50, border=True):
+                st.write("total documents : ", len(st.session_state["data"]), "total chunks : ", len(st.session_state["chunks"]))
 
     delete_collection = col1.button("⚠️ Delete collection", type="secondary")
 
@@ -286,7 +268,7 @@ def main() -> None:
         delete_vector_db(st.session_state["vector_db"])
 
     with col2:
-        message_container = st.container(height=500, border=True)
+        message_container = st.container(height=300, border=True)
 
         for message in st.session_state["messages"]:
             avatar = "🤖" if message["role"] == "assistant" else "😎"
