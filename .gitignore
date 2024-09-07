@@ -165,3 +165,5 @@ chroma_db*
 cache/cache_db_0.11.db.wal
 cache/cache_db_0.11.db
 image.pdf
+.milvus_csv.db.lock
+milvus_csv.db
