@@ -39,19 +39,26 @@ n = len(sys.argv)
 #logger.info(f"Extracted model names: {model_names}")
 logger.info("Total arguments passed: %s", n)
 
-for i in range(1, n):
-    embed_model_args = sys.argv[1] #text-embedding-3-large
-    chunk_size_args = sys.argv[2]
-    chunk_overlap_args = sys.argv[3]
-    llm_model_args = sys.argv[4] #gpt-4o-mini
-    k_args = sys.argv[5] #25
+
+# if n == 2:
+#     embed_model_args = sys.argv[1] #text-embedding-3-large
+# else :
+#     logger.error("Too many arguments - need only embed_model_args")
+
+#the below code was needed for testing
+# for i in range(1, n):
+#     embed_model_args = sys.argv[1] #text-embedding-3-large
+#     chunk_size_args = sys.argv[2]
+#     chunk_overlap_args = sys.argv[3]
+#     llm_model_args = sys.argv[4] #gpt-4o-mini
+#     k_args = sys.argv[5] #25
     
 #print("llm_model from Args:", llm_model_args)
-logger.info("embed_model from Args: %s", embed_model_args)
-logger.info("chunk_size from Args: %s", chunk_size_args)
-logger.info("chunk_overlap from Args: %s", chunk_overlap_args)
-logger.info("llm_model from Args: %s", llm_model_args)
-logger.info("k_args from Args: %s", k_args)
+# logger.info("embed_model from Args: %s", embed_model_args)
+# logger.info("chunk_size from Args: %s", chunk_size_args)
+# logger.info("chunk_overlap from Args: %s", chunk_overlap_args)
+# logger.info("llm_model from Args: %s", llm_model_args)
+# logger.info("k_args from Args: %s", k_args)
 
 #read dotenv
 from dotenv import load_dotenv, find_dotenv
@@ -61,7 +68,7 @@ logger.info("Found .env: %s", founddotenv)
 # Streamlit page configuration
 st.set_page_config(
     page_title="OLLAMA-CHROMA CSV RAG",
-    page_icon="🎈",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -90,8 +97,11 @@ def create_vector_db(file_upload) -> Chroma:
         logger.info("Total documents : %s", len(data))
         st.session_state["data"] = data
 
+    logger.info("chunk_size = %s", st.session_state['chunk_size'])
+    logger.info("chunk_overlap = %s", st.session_state['chunk_overlap'])
+
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=int(chunk_size_args), chunk_overlap=int(chunk_overlap_args))
+        chunk_size=int(st.session_state['chunk_size']), chunk_overlap=int(st.session_state['chunk_overlap']))
     chunks = text_splitter.split_documents(data)
     logger.info("Total Chunks : %s", len(chunks))
     st.session_state["chunks"] = chunks
@@ -115,7 +125,8 @@ def create_vector_db(file_upload) -> Chroma:
     logger.info("Chunk List : %s", len(chunk_list))
 
     ##end of batch logic
-    embeddings = OllamaEmbeddings(model=embed_model_args, show_progress=True) #nomic-embed-text #mxbai-embed-large
+    logger.info("embed_name = %s", st.session_state['embed_name'])
+    embeddings = OllamaEmbeddings(model=st.session_state['embed_name'], show_progress=True) #nomic-embed-text #mxbai-embed-large
     
     vector_db = insert_into_chroma(chunks, chunk_list, count_max, embeddings)
 
@@ -185,7 +196,8 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     )
     logger.info("got the prompt template")
 
-    retriever = vector_db.as_retriever(search_kwargs={"k": int(k_args)})
+    retriever = vector_db.as_retriever(search_kwargs={"k": int(st.session_state['k_args'])})
+    logger.info("k_args = %s", st.session_state['k_args'])
     logger.info("got the retriever")
 
     def format_docs(docs):
@@ -208,30 +220,43 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     logger.info("Question processed and response generated")
     return response
 
-def delete_vector_db(vector_db: Optional[Chroma]) -> None:
-    """
-    Delete the vector database and clear related session state.
+def clear_text():
+        st.session_state["1"] = ""
+        st.session_state["2"] = ""
+        st.session_state["3"] = ""
+        st.session_state["4"] = ""
 
-    Args:
-        vector_db (Optional[Chroma]): The vector database to be deleted.
-    """
+def delete_vector_db(vector_db: Optional[Chroma]) -> None:
     logger.info("Deleting vector DB")
     if vector_db is not None:
         vector_db.delete_collection()
         st.session_state.pop("pdf_pages", None)
         st.session_state.pop("file_upload", None)
         st.session_state.pop("vector_db", None)
+        st.session_state.pop("chunk_size", None)
+        st.session_state.pop("chunk_overlap", None)
+        st.session_state.pop("embed_name", None)
+        st.session_state.pop("k_args", None)
+
+        #st.session_state["chunk_size"] = ""
+        #st.session_state["chunk_overlap"] = ""
+        #st.session_state["k_args"] = ""
+
         st.success("Collection and temporary files deleted successfully.")
         logger.info("Vector DB and related session state cleared")
         st.rerun()
     else:
+        #st.session_state["chunk_size"] = ""
+        #st.session_state["chunk_overlap"] = ""
+        #st.session_state["k_args"] = ""
+
         st.error("No vector database found to delete.")
         logger.warning("Attempted to delete vector DB, but none was found")
 
 
 def main() -> None:
 
-    st.subheader("🧠 Ollama CSV Chroma RAG playground", divider="gray", anchor=False)
+    st.subheader("🤖 Ollama CSV Chroma RAG playground", divider="blue", anchor=False)
 
     models_info = ollama.list()
     available_models = extract_model_names(models_info)
@@ -249,6 +274,19 @@ def main() -> None:
             "Pick a model available locally on your system ↓", available_models
         )
 
+    with col1:
+            with st.container(height=260, border=True):
+                col3, col4 = st.columns([1,1])
+                with col3:
+                    with st.container(height=260, border=True):
+                        chunk_size = st.text_input(label='Enter chunk size', key="1")
+                        chunk_overlap = st.text_input(label='Enter chunk overlap', key="2")
+
+                with col4:
+                    with st.container(height=260, border=True):
+                        k_args = st.text_input(label='Enter K docs to retrieve', key="3")
+                        embed_name = st.text_input(label='Enter Embedding Model Name', key="4")
+
     file_upload = col1.file_uploader(
         "Upload a CSV file ↓", type="csv", accept_multiple_files=False
     )
@@ -256,13 +294,17 @@ def main() -> None:
     if file_upload:
         st.session_state["file_upload"] = file_upload
         if st.session_state["vector_db"] is None:
+            st.session_state["chunk_size"] = chunk_size
+            st.session_state["chunk_overlap"] = chunk_overlap
+            st.session_state["k_args"] = k_args
+            st.session_state["embed_name"] = embed_name
             st.session_state["vector_db"] = create_vector_db(file_upload)
         
         with col1:
             with st.container(height=50, border=True):
                 st.write("total documents : ", len(st.session_state["data"]), "total chunks : ", len(st.session_state["chunks"]))
 
-    delete_collection = col1.button("⚠️ Delete collection", type="secondary")
+    delete_collection = col1.button("⚠️ Delete collection", type="secondary", on_click=clear_text)
 
     if delete_collection:
         delete_vector_db(st.session_state["vector_db"])
