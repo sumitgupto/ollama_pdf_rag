@@ -166,7 +166,7 @@ def insert_into_chroma(chunks, chunk_list, count_max, embeddings):
     return vectorstore
 
 def send_chunks_to_chroma_Db (subchunk, embeddings) :   
-    persist_directory_csv ='./chroma_db_csv_ollama'
+    persist_directory_csv ='./chroma_db_ollama_multi'
     vector_db = Chroma.from_documents(
         documents = subchunk,
         embedding = embeddings,
