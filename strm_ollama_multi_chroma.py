@@ -11,6 +11,7 @@ import ollama
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
+import chromadb
 
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -72,9 +73,19 @@ def extract_model_names(
     logger.info(f"Extracted model names: {model_names}")
     return model_names
 
+def delete_collection_if_exists(vector_store, embeddings):
+    logger.info("found collection to be deleted : %s", vector_store._collection.count())
+    vector_store.delete_collection()
+    #Initialize the collection again and return
+    vector_store = initialize_chroma_db(embeddings)
+    return vector_store
+
 def load_csv_data(path) :
     #loader = UnstructuredPDFLoader(path)
-    loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={'delimiter': ','})
+    loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={
+        "delimiter": ",",
+        "fieldnames": ["Commit ID", "Changes", "Comments"]
+        }, source_column="Commit ID")
     data = loader.load()
     logger.info("Total documents CSV : %s", len(data))
     st.session_state["data"] = data
@@ -88,6 +99,16 @@ def load_pdf_data(path) :
     logger.info("Total documents PDF : %s", len(data))
     st.session_state["data"] = data
     return data
+
+def initialize_chroma_db(embeddings) :
+    vector_store = Chroma(
+        collection_name="col_chroma_langchain_db_multi",
+        embedding_function = embeddings,
+        persist_directory="./dir_chroma_langchain_db_multi",
+        # Where to save data locally, remove if not neccesary
+    )
+    logger.info("vector_store count at Initialization = %s", vector_store._collection.count())
+    return vector_store
 
 def create_vector_db(file_upload) -> Chroma:
     logger.info(f"Creating vector DB from file upload: {file_upload.name}")
@@ -139,41 +160,43 @@ def create_vector_db(file_upload) -> Chroma:
     ##end of batch logic
     logger.info("embed_name = %s", st.session_state['embed_name'])
     embeddings = OllamaEmbeddings(model=st.session_state['embed_name'], show_progress=True) #nomic-embed-text #mxbai-embed-large
-    
-    vector_db = insert_into_chroma(chunks, chunk_list, count_max, embeddings)
 
-    logger.info("Collection count in DB : %s", vector_db._collection.count())
+    #Initiaze Chroma DB
+    vector_db = initialize_chroma_db(embeddings)
+
+    #delete existing collections
+    if (vector_db._collection.count()) > 0:
+        vector_db = delete_collection_if_exists(vector_db, embeddings)
+
+    #insert new data
+    vector_db = insert_into_chroma(vector_db, chunks, chunk_list, count_max, embeddings)
+    logger.info("Total Collection count in DB : %s", vector_db._collection.count())
 
     shutil.rmtree(temp_dir)
     logger.info(f"Temporary directory {temp_dir} removed")
 
     return vector_db
 
-def insert_into_chroma(chunks, chunk_list, count_max, embeddings):
+def insert_into_chroma(vectorstore, chunks, chunk_list, count_max, embeddings):
     remaining = len(chunks)
     for name in chunk_list:
         if remaining > count_max :
             name = chunks[:count_max]
             remaining = remaining - count_max
             logger.info("Chunk Size : %s", len(name))
-            vectorstore = send_chunks_to_chroma_Db(name, embeddings)
+            vectorstore = send_chunks_to_chroma_Db(vectorstore, name, embeddings)
             logger.info("sent chunks to DB : %s", len(name))
         else :
             name = chunks[:remaining]
             logger.info("Last Chunk Size : %s", len(name))
-            vectorstore = send_chunks_to_chroma_Db(name, embeddings)
+            vectorstore = send_chunks_to_chroma_Db(vectorstore, name, embeddings)
             logger.info("sent last chunks to DB : %s", len(name))
     return vectorstore
 
-def send_chunks_to_chroma_Db (subchunk, embeddings) :   
-    persist_directory_csv ='./chroma_db_ollama_multi'
-    vector_db = Chroma.from_documents(
-        documents = subchunk,
-        embedding = embeddings,
-        persist_directory=persist_directory_csv 
-        )
-    logger.info("Added chunks to DB : %s", len(subchunk))
-    return vector_db
+def send_chunks_to_chroma_Db (vectorstore, subchunk, embeddings) :   
+    vectorstore.add_documents(subchunk)
+    logger.info(f"Added {vectorstore._collection.count()} chunks to vectorstore")
+    return vectorstore
 
 def process_question(question: str, vector_db: Chroma, selected_model: str) -> str:
 
