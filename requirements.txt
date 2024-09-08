@@ -7,7 +7,9 @@ langchain-core
 langchain-community
 langchain_text_splitters
 unstructured
-unstructured[all-docs]
+unstructured[pdf]
+langchain-unstructured
+pypdf
 Pillow
 pdfkit
 langchain-openai
