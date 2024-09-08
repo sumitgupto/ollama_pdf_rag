@@ -325,6 +325,10 @@ def main() -> None:
                 with message_container.chat_message("assistant", avatar="🤖"):
                     with st.spinner(":green[processing...]"):
                         if st.session_state["vector_db"] is not None:
+                            st.session_state["chunk_size"] = chunk_size
+                            st.session_state["chunk_overlap"] = chunk_overlap
+                            st.session_state["k_args"] = k_args
+                            st.session_state["embed_name"] = embed_name
                             response = process_question(
                                 prompt, st.session_state["vector_db"], selected_model
                             )
