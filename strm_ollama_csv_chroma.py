@@ -244,7 +244,7 @@ def delete_vector_db(vector_db: Optional[Chroma]) -> None:
 
         st.success("Collection and temporary files deleted successfully.")
         logger.info("Vector DB and related session state cleared")
-        st.rerun()
+        #st.rerun()
     else:
         #st.session_state["chunk_size"] = ""
         #st.session_state["chunk_overlap"] = ""
