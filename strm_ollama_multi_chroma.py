@@ -1,6 +1,3 @@
-"""
-streamlit run strm_ollama_csv_chroma.py nomic-embed-text 200 25 llama3.1 25
-"""
 import streamlit as st
 import logging
 import os
