@@ -60,7 +60,7 @@ def get_file_type(file_name) :
     # extract the file name and extension
     logger.info("File name is %s", split_tup)
     file_extension = split_tup[1]
-    logger.info("File type is %s", file_extension)
+    #logger.info("File type is %s", file_extension)
     return file_extension
 
 @st.cache_resource(show_spinner=True)
@@ -110,6 +110,22 @@ def initialize_chroma_db(embeddings) :
     logger.info("vector_store count at Initialization = %s", vector_store._collection.count())
     return vector_store
 
+def get_chunk_list(chunks, count_max) :
+    quotient = len(chunks) // count_max
+    remainder = len(chunks) % count_max
+    if remainder > 0:
+        total_chunks = quotient + 1
+    else :
+        total_chunks = quotient
+    #logger.info("Number of Chunk Groups : %s", total_chunks)
+
+    chunk_list = []
+    for i in range(total_chunks):
+        chunk_name = f"chunk-{i}"
+        chunk_list.append(chunk_name)
+        #logger.info("Chunk name : %s", chunk_name)
+    return chunk_list
+
 def create_vector_db(file_upload) -> Chroma:
     logger.info(f"Creating vector DB from file upload: {file_upload.name}")
     temp_dir = tempfile.mkdtemp()
@@ -142,20 +158,8 @@ def create_vector_db(file_upload) -> Chroma:
 
     ##code to batch
     count_max = 2000
-    quotient = len(chunks) // count_max
-    remainder = len(chunks) % count_max
-    if remainder > 0:
-        total_chunks = quotient + 1
-    else :
-        total_chunks = quotient
-    logger.info("Number of Chunk Groups : %s", total_chunks)
-
-    chunk_list = []
-    for i in range(total_chunks):
-        chunk_name = f"chunk-{i}"
-        chunk_list.append(chunk_name)
-        logger.info("Chunk name : %s", chunk_name)
-    logger.info("Chunk List : %s", len(chunk_list))
+    chunk_list = get_chunk_list(chunks, count_max)
+    logger.info("Total Chunk List : %s", len(chunk_list))
 
     ##end of batch logic
     logger.info("embed_name = %s", st.session_state['embed_name'])
@@ -171,6 +175,7 @@ def create_vector_db(file_upload) -> Chroma:
     #insert new data
     vector_db = insert_into_chroma(vector_db, chunks, chunk_list, count_max, embeddings)
     logger.info("Total Collection count in DB : %s", vector_db._collection.count())
+    st.session_state["total_db_records"] = vector_db._collection.count()
 
     shutil.rmtree(temp_dir)
     logger.info(f"Temporary directory {temp_dir} removed")
@@ -256,38 +261,43 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     return response
 
 def clear_text():
-        st.session_state["1"] = ""
-        st.session_state["2"] = ""
-        st.session_state["3"] = ""
-        st.session_state["4"] = ""
+        st.session_state["1"] = None
+        st.session_state["2"] = None
+        st.session_state["3"] = None
+        st.session_state["4"] = None
 
 def delete_vector_db(vector_db: Optional[Chroma]) -> None:
-    logger.info("Deleting vector DB")
     if vector_db is not None:
+        logger.info("Deleting vector DB as vector_db is not None")
+        update_key()
         vector_db.delete_collection()
+        st.session_state["vector_db"] = None
+
         st.session_state.pop("pdf_pages", None)
         st.session_state.pop("file_upload", None)
-        st.session_state.pop("vector_db", None)
         st.session_state.pop("chunk_size", None)
         st.session_state.pop("chunk_overlap", None)
         st.session_state.pop("embed_name", None)
         st.session_state.pop("k_args", None)
-
-        #st.session_state["chunk_size"] = ""
-        #st.session_state["chunk_overlap"] = ""
-        #st.session_state["k_args"] = ""
+        st.session_state.pop("total_db_records", None)
 
         st.success("Collection and temporary files deleted successfully.")
         logger.info("Vector DB and related session state cleared")
         #st.rerun()
     else:
-        #st.session_state["chunk_size"] = ""
-        #st.session_state["chunk_overlap"] = ""
-        #st.session_state["k_args"] = ""
-
-        st.error("No vector database found to delete.")
+        st.session_state["vector_db"] = None
+        st.error("No vector database found to delete and st.session_state[vector_db] set to None")
         logger.warning("Attempted to delete vector DB, but none was found")
 
+def update_key():
+    st.session_state.uploader_key += 1
+    st.cache_data.clear()
+
+def check_mandatory_values():
+    flag = False
+    if ("k_args" in st.session_state) and ("chunk_size" in st.session_state) and ("chunk_overlap" in st.session_state) and ("embed_name" in st.session_state) :
+        flag = True
+    return flag
 
 def main() -> None:
 
@@ -322,10 +332,19 @@ def main() -> None:
                         k_args = st.text_input(label='Enter K docs to retrieve', key="3")
                         embed_name = st.text_input(label='Enter Embedding Model Name', key="4")
 
-    file_upload = col1.file_uploader(
-        "Upload a CSV or PDF file ↓", type=['csv', 'pdf'], accept_multiple_files=False
-    )
+    if "uploader_key" not in st.session_state:
+        st.session_state.uploader_key = 0
 
+    flag = check_mandatory_values()
+    logger.info("Mandatory values status is %s", flag)
+
+    file_upload = col1.file_uploader(
+        "Upload a CSV or PDF file ↓", 
+        type=['csv', 'pdf'], 
+        accept_multiple_files=False,
+        key=f"uploader_{st.session_state.uploader_key}"
+    )
+ 
     if file_upload:
         st.session_state["file_upload"] = file_upload
         if st.session_state["vector_db"] is None:
@@ -337,9 +356,15 @@ def main() -> None:
         
         with col1:
             with st.container(height=50, border=True):
-                st.write("total documents : ", len(st.session_state["data"]), "total chunks : ", len(st.session_state["chunks"]))
+                st.write("total documents : ", len(st.session_state["data"]), 
+                        "total chunks : ", len(st.session_state["chunks"]),
+                        "total doc count in DB : ", st.session_state["total_db_records"]
+                        )
+
+
 
     delete_collection = col1.button("⚠️ Delete collection", type="secondary", on_click=clear_text)
+
 
     if delete_collection:
         delete_vector_db(st.session_state["vector_db"])
