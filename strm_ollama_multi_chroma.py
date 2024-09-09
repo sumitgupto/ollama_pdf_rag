@@ -11,8 +11,6 @@ import ollama
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-import chromadb
-
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.chat_models import ChatOllama
@@ -20,7 +18,6 @@ from langchain_core.runnables import RunnablePassthrough
 
 from typing import List, Tuple, Dict, Any, Optional
 
-#from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
 import csv
@@ -64,8 +61,6 @@ def get_file_type(file_name) :
     return file_extension
 
 @st.cache_resource(show_spinner=True)
-#hardcode model names
-@st.cache_resource(show_spinner=True)
 def extract_model_names(
     models_info: Dict[str, List[Dict[str, Any]]],) -> Tuple[str, ...]:
     logger.info("Extracting model names from models_info")
@@ -84,16 +79,16 @@ def load_csv_data(path) :
     #loader = UnstructuredPDFLoader(path)
     loader = CSVLoader(file_path=path, encoding="utf-8", csv_args={
         "delimiter": ",",
-        "fieldnames": ["Commit ID", "Changes", "Comments"]
-        }, source_column="Commit ID")
+        #"fieldnames": ["Commit ID", "Changes", "Comments"]
+        }, 
+        #source_column="Commit ID"
+        )
     data = loader.load()
     logger.info("Total documents CSV : %s", len(data))
     st.session_state["data"] = data
     return data
 
 def load_pdf_data(path) :
-    #loader = UnstructuredPDFLoader(path)
-    #data = loader.load()
     loader = PyPDFLoader(path)
     data = loader.load_and_split()
     logger.info("Total documents PDF : %s", len(data))
@@ -208,14 +203,10 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     logger.info(f"""Processing question: {question} using model: {selected_model}""")
     
     PROMPT_TEMPLATE = """
-    Human: You are an AI assistant, and provides answers to questions by using fact based and statistical information when possible.
-    Use the following pieces of information to provide a concise answer to the question enclosed in <question> tags.
-    Your will be presented with a document containing 3 columns
-    The first column is "Commit ID". This is the primary key and will always be unique
-    The Second column is "Changes"
-    The Third column is "Comments"
-    Each unique "Commit ID" will be a row containing "Changes" and "Comments"
-    So, if there are 5 unique commit IDs, there would be 5 rows
+    Human: You are an AI assistant, and provides answers to questions by using 
+    fact based and statistical information derived from the information provided.
+    Use the following pieces of information to provide a concise answer 
+    to the question enclosed in <question> tags.
     Look through the whole document before answering the question.
     If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
@@ -253,7 +244,6 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         | llm
         | StrOutputParser()
     )
-
     logger.info("got the chain")
     
     response = chain.invoke(question)
@@ -283,7 +273,7 @@ def delete_vector_db(vector_db: Optional[Chroma]) -> None:
 
         st.success("Collection and temporary files deleted successfully.")
         logger.info("Vector DB and related session state cleared")
-        #st.rerun()
+        st.rerun()
     else:
         st.session_state["vector_db"] = None
         st.error("No vector database found to delete and st.session_state[vector_db] set to None")
@@ -335,9 +325,6 @@ def main() -> None:
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
 
-    flag = check_mandatory_values()
-    logger.info("Mandatory values status is %s", flag)
-
     file_upload = col1.file_uploader(
         "Upload a CSV or PDF file ↓", 
         type=['csv', 'pdf'], 
@@ -361,10 +348,7 @@ def main() -> None:
                         "total doc count in DB : ", st.session_state["total_db_records"]
                         )
 
-
-
     delete_collection = col1.button("⚠️ Delete collection", type="secondary", on_click=clear_text)
-
 
     if delete_collection:
         delete_vector_db(st.session_state["vector_db"])
